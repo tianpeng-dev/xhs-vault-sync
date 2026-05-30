@@ -12,6 +12,29 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "XHS Vault Sync" });
 
     new Setting(containerEl)
+      .setName("Auto sync")
+      .setDesc("Run bookmark sync on an interval. Minimum interval is 5 minutes.")
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.autoSyncEnabled).onChange(async (value) => {
+          this.plugin.settings.autoSyncEnabled = value;
+          await this.plugin.saveSettings();
+          this.plugin.startSyncInterval();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Sync interval minutes")
+      .setDesc("Minimum 5 minutes.")
+      .addText((text) =>
+        text.setValue(String(this.plugin.settings.syncIntervalMinutes)).onChange(async (value) => {
+          const parsed = Number(value);
+          this.plugin.settings.syncIntervalMinutes = Number.isFinite(parsed) ? Math.max(5, Math.floor(parsed)) : 10;
+          await this.plugin.saveSettings();
+          this.plugin.startSyncInterval();
+        })
+      );
+
+    new Setting(containerEl)
       .setName("Root folder")
       .setDesc("Synced Markdown and media will be stored under this vault folder.")
       .addText((text) =>
