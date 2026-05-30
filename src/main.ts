@@ -1,5 +1,6 @@
 import { Notice, Plugin } from "obsidian";
 import { createDefaultSettings, type XhsVaultSyncSettings } from "./settings";
+import { LoginModal } from "./ui/login-modal";
 import { XhsVaultSyncSettingTab } from "./ui/settings-tab";
 
 export default class XhsVaultSyncPlugin extends Plugin {
@@ -8,6 +9,12 @@ export default class XhsVaultSyncPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
     this.addSettingTab(new XhsVaultSyncSettingTab(this.app, this));
+
+    this.addCommand({
+      id: "xhs-vault-sync-login",
+      name: "Log in to Xiaohongshu",
+      callback: () => new LoginModal(this).open()
+    });
 
     this.addCommand({
       id: "xhs-vault-sync-now",
