@@ -76,4 +76,20 @@ describe("renderNoteMarkdown", () => {
 
     expect(markdown).toContain("[image link](https://example.com/a%29b.jpg)");
   });
+
+  it("normalizes remote media URLs before rendering markdown links", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "Test Note",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [{ type: "image", url: "https://example.com/a.jpg\n![pwn][x]\n[x]: https://evil.example" }]
+    });
+
+    expect(markdown).toContain("[image link](https://example.com/a.jpg![pwn][x][x]:%20https://evil.example)");
+    expect(markdown).not.toContain("\n![pwn][x]");
+    expect(markdown).not.toContain("\n[x]: https://evil.example");
+  });
 });

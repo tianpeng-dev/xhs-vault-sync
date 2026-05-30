@@ -20,7 +20,7 @@ function markdownUrl(value: string): string | undefined {
   try {
     const url = new URL(value);
     if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
-    return value.replace(/\)/g, "%29");
+    return url.href.replace(/\)/g, "%29");
   } catch {
     return undefined;
   }
