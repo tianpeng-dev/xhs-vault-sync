@@ -1,0 +1,9 @@
+{
+  "id": "xhs-vault-sync",
+  "name": "XHS Vault Sync",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Sync Xiaohongshu/RedNote bookmarks into your Obsidian vault.",
+  "author": "Open Source Contributors",
+  "isDesktopOnly": true
+}
