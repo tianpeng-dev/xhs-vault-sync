@@ -16,18 +16,22 @@ export interface XhsVaultSyncSettings {
   lastSyncAt: number;
 }
 
-export const DEFAULT_SETTINGS: XhsVaultSyncSettings = {
-  rootFolder: "RedNote",
-  autoSyncEnabled: false,
-  syncIntervalMinutes: 10,
-  syncBatchSize: 5,
-  activeSyncTarget: "bookmark",
-  downloadImages: true,
-  cookies: "",
-  a1Cookie: "",
-  userId: "",
-  userName: "",
-  syncCursors: {},
-  syncedIds: {},
-  lastSyncAt: 0
-};
+export function createDefaultSettings(): XhsVaultSyncSettings {
+  return {
+    rootFolder: "RedNote",
+    autoSyncEnabled: false,
+    syncIntervalMinutes: 10,
+    syncBatchSize: 5,
+    activeSyncTarget: "bookmark",
+    downloadImages: true,
+    cookies: "",
+    a1Cookie: "",
+    userId: "",
+    userName: "",
+    syncCursors: {},
+    syncedIds: {},
+    lastSyncAt: 0
+  };
+}
+
+export const DEFAULT_SETTINGS: XhsVaultSyncSettings = createDefaultSettings();

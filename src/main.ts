@@ -1,9 +1,9 @@
 import { Notice, Plugin } from "obsidian";
-import { DEFAULT_SETTINGS, type XhsVaultSyncSettings } from "./settings";
+import { createDefaultSettings, type XhsVaultSyncSettings } from "./settings";
 import { XhsVaultSyncSettingTab } from "./ui/settings-tab";
 
 export default class XhsVaultSyncPlugin extends Plugin {
-  settings: XhsVaultSyncSettings = DEFAULT_SETTINGS;
+  settings: XhsVaultSyncSettings = createDefaultSettings();
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -17,7 +17,13 @@ export default class XhsVaultSyncPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const defaults = createDefaultSettings();
+    const loaded = (await this.loadData()) as Partial<XhsVaultSyncSettings> | null;
+
+    this.settings = Object.assign(defaults, loaded, {
+      syncCursors: { ...(loaded?.syncCursors ?? {}) },
+      syncedIds: { ...(loaded?.syncedIds ?? {}) }
+    });
   }
 
   async saveSettings(): Promise<void> {
