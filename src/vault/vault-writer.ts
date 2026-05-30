@@ -1,5 +1,5 @@
-import type { App, TFile } from "obsidian";
-import { normalizePath } from "obsidian";
+import type { App } from "obsidian";
+import { normalizePath, TFile, TFolder } from "obsidian";
 import type { XhsNote } from "../sync/types";
 import { joinVaultPath, safeFileName } from "../utils/paths";
 import { renderNoteMarkdown } from "./markdown";
@@ -9,7 +9,9 @@ export class VaultWriter {
 
   async ensureFolder(path: string): Promise<void> {
     const normalized = normalizePath(path);
-    if (this.app.vault.getAbstractFileByPath(normalized)) return;
+    const existing = this.app.vault.getAbstractFileByPath(normalized);
+    if (existing instanceof TFolder) return;
+    if (existing) throw new Error(`Vault path exists but is not a folder: ${normalized}`);
 
     const parent = normalized.split("/").slice(0, -1).join("/");
     if (parent) await this.ensureFolder(parent);
@@ -23,8 +25,10 @@ export class VaultWriter {
     const content = renderNoteMarkdown(note);
     const existing = this.app.vault.getAbstractFileByPath(path);
 
-    if (existing) {
-      await this.app.vault.modify(existing as TFile, content);
+    if (existing instanceof TFile) {
+      await this.app.vault.modify(existing, content);
+    } else if (existing) {
+      throw new Error(`Vault path exists but is not a file: ${path}`);
     } else {
       await this.app.vault.create(path, content);
     }
@@ -37,7 +41,11 @@ export class VaultWriter {
     await this.ensureFolder(folder);
     const path = normalizePath(joinVaultPath(folder, `image-${index}.${ext || "jpg"}`));
     const existing = this.app.vault.getAbstractFileByPath(path);
-    if (existing) await this.app.vault.delete(existing);
+    if (existing instanceof TFile) {
+      await this.app.vault.delete(existing);
+    } else if (existing) {
+      throw new Error(`Vault path exists but is not a file: ${path}`);
+    }
     await this.app.vault.createBinary(path, data);
     return path;
   }
