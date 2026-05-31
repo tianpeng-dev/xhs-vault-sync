@@ -56,7 +56,7 @@ interface XhsFeedResponse {
 }
 
 export class XhsApi {
-  constructor(private readonly signer: SignManager) {}
+  constructor(private readonly signer: SignManager, private readonly cookies: string) {}
 
   async getCurrentUser(): Promise<{ userId: string; userName: string }> {
     const data = (await this.signedGet(USER_URL)) as XhsUserResponse;
@@ -127,6 +127,7 @@ export class XhsApi {
       headers: {
         ...headers,
         "Content-Type": "application/json",
+        Cookie: this.cookies,
         Origin: XHS_HOST.web,
         Referer: `${XHS_HOST.web}/`
       },
@@ -144,6 +145,7 @@ export class XhsApi {
       headers: {
         ...headers,
         "Content-Type": "application/json",
+        Cookie: this.cookies,
         Origin: XHS_HOST.web,
         Referer: `${XHS_HOST.web}/`
       },

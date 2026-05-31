@@ -10,6 +10,15 @@ export function normalizePath(path: string): string {
   return path.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 }
 
-export async function requestUrl(): Promise<never> {
-  throw new Error("requestUrl mock was not configured for this test");
+type RequestUrlMock = (options: unknown) => Promise<unknown>;
+
+let requestUrlMock: RequestUrlMock | null = null;
+
+export function __setRequestUrlMock(mock: RequestUrlMock | null): void {
+  requestUrlMock = mock;
+}
+
+export async function requestUrl(options: unknown): Promise<unknown> {
+  if (!requestUrlMock) throw new Error("requestUrl mock was not configured for this test");
+  return requestUrlMock(options);
 }

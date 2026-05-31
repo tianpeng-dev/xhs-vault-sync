@@ -28,7 +28,8 @@ export class SyncEngine {
 
     try {
       await signer.initWebview();
-      const api = new XhsApi(signer);
+      const cookies = this.plugin.settings.cookies || `a1=${this.plugin.settings.a1Cookie}`;
+      const api = new XhsApi(signer, cookies);
       const writer = new VaultWriter(this.plugin.app, this.plugin.settings.rootFolder);
       const user = await api.getCurrentUser();
       this.plugin.settings.userId = user.userId;

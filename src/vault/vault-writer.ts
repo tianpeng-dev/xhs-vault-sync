@@ -20,7 +20,7 @@ export class VaultWriter {
 
   async writeNote(note: XhsNote): Promise<string> {
     await this.ensureFolder(this.rootFolder);
-    const fileName = `${safeFileName(note.title || note.id)}.md`;
+    const fileName = `${safeFileName(`${note.title || "Untitled"}-${note.id}`)}.md`;
     const path = normalizePath(joinVaultPath(this.rootFolder, fileName));
     const content = renderNoteMarkdown(note);
     const existing = this.app.vault.getAbstractFileByPath(path);
