@@ -154,6 +154,46 @@ describe("XhsApi", () => {
     });
   });
 
+  it("parses video media from feed note detail while keeping images", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        data: {
+          items: [
+            {
+              note_card: {
+                note_id: "note-video",
+                display_title: "视频标题",
+                desc: "视频正文",
+                image_list: [{ url_default: "https://img.example.com/cover.jpg" }],
+                video_info: {
+                  media: {
+                    stream: {
+                      h264: [
+                        {
+                          master_url: "https://video.example.com/main.mp4",
+                          backup_urls: ["https://video.example.com/backup.mp4"]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getNoteDetail("note-video", "token")).resolves.toMatchObject({
+      id: "note-video",
+      media: [
+        { type: "image", url: "https://img.example.com/cover.jpg", ext: "jpg" },
+        { type: "video", url: "https://video.example.com/main.mp4", ext: "mp4" }
+      ]
+    });
+  });
+
   it("ignores unavailable error pages returned as note detail", async () => {
     const signer = {
       signedFetchJson: vi.fn().mockResolvedValue({

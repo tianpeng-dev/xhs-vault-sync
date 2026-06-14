@@ -540,6 +540,61 @@ export class SignManager {
           });
         }
 
+        function collectVideos(card) {
+          var videos = [];
+          function add(url) {
+            if (!url) return;
+            var text = String(url).trim();
+            if (!/^https?:\\/\\//.test(text)) return;
+            if (videos.indexOf(text) === -1) videos.push(text);
+          }
+          function first(values) {
+            for (var index = 0; index < values.length; index++) {
+              var value = unwrap(values[index]);
+              if (!value) continue;
+              if (Array.isArray(value)) {
+                for (var nestedIndex = 0; nestedIndex < value.length; nestedIndex++) {
+                  var nested = first([value[nestedIndex]]);
+                  if (nested) return nested;
+                }
+                continue;
+              }
+              if (typeof value === "string" && /^https?:\\/\\//.test(value.trim())) return value.trim();
+            }
+            return "";
+          }
+          function scan(value, depth) {
+            value = unwrap(value);
+            var nextDepth = depth || 0;
+            if (nextDepth > 8 || !value || typeof value !== "object") return;
+            add(first([value.master_url, value.masterUrl, value.backup_urls, value.backupUrls]));
+            var media = unwrap(value.media) || {};
+            var stream = unwrap(media.stream) || unwrap(value.stream) || {};
+            [stream.h264, stream.h265].forEach(function(streamValue) {
+              streamValue = unwrap(streamValue);
+              if (Array.isArray(streamValue)) streamValue.forEach(function(entry) { scan(entry, nextDepth + 1); });
+              else scan(streamValue, nextDepth + 1);
+            });
+            ["video", "videoInfo", "video_info", "media", "stream"].forEach(function(key) {
+              var child = value[key];
+              if (!child || child === value) return;
+              child = unwrap(child);
+              if (Array.isArray(child)) child.forEach(function(entry) { scan(entry, nextDepth + 1); });
+              else scan(child, nextDepth + 1);
+            });
+          }
+
+          scan(card && (card.video || card.videoInfo || card.video_info), 0);
+          [card && card.video, card && card.videoInfo, card && card.video_info].forEach(function(value) { scan(value, 0); });
+          Array.from(document.querySelectorAll('video[src], source[src]')).forEach(function(element) {
+            add(element.getAttribute("src") || element.src || "");
+          });
+
+          return videos.slice(0, 10).map(function(url) {
+            return { type: "video", url: url, ext: "mp4" };
+          });
+        }
+
         function collectComments(card) {
           var comments = [];
           function add(author, content, createdAt, likes) {
@@ -638,7 +693,7 @@ export class SignManager {
             : XHS_WEB + "/explore/" + NOTE_ID,
           tags: tags,
           content: content,
-          media: collectImages(card),
+          media: collectImages(card).concat(collectVideos(card)),
           comments: collectComments(card)
         };
       })()

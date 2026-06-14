@@ -20,6 +20,65 @@ function isUnavailableTitle(value: string): boolean {
   return value.trim().toLowerCase() === "sorry, this page isn't available right now.";
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object");
+}
+
+function asHttpUrl(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  return /^https?:\/\//.test(text) ? text : "";
+}
+
+function firstHttpUrl(values: unknown[]): string {
+  for (const value of values) {
+    const direct = asHttpUrl(value);
+    if (direct) return direct;
+    if (Array.isArray(value)) {
+      const nested = firstHttpUrl(value);
+      if (nested) return nested;
+    }
+  }
+  return "";
+}
+
+function collectVideoUrlsFromValue(value: unknown, urls: string[], depth = 0): void {
+  if (depth > 8 || !isRecord(value)) return;
+  const preferred = firstHttpUrl([
+    value.master_url,
+    value.masterUrl,
+    value.backup_urls,
+    value.backupUrls
+  ]);
+  if (preferred && !urls.includes(preferred)) urls.push(preferred);
+
+  const media = isRecord(value.media) ? value.media : undefined;
+  const stream = isRecord(media?.stream) ? media.stream : isRecord(value.stream) ? value.stream : undefined;
+  const streamValues = [stream?.h264, stream?.h265].filter(Boolean);
+  for (const streamValue of streamValues) {
+    if (Array.isArray(streamValue)) {
+      streamValue.forEach((entry) => collectVideoUrlsFromValue(entry, urls, depth + 1));
+    } else {
+      collectVideoUrlsFromValue(streamValue, urls, depth + 1);
+    }
+  }
+
+  for (const key of ["video", "videoInfo", "video_info", "media", "stream"]) {
+    const child: unknown = value[key];
+    if (child && child !== value) {
+      if (Array.isArray(child)) child.forEach((entry) => collectVideoUrlsFromValue(entry, urls, depth + 1));
+      else collectVideoUrlsFromValue(child, urls, depth + 1);
+    }
+  }
+}
+
+function collectVideoMedia(note: unknown): XhsMedia[] {
+  if (!isRecord(note)) return [];
+  const urls: string[] = [];
+  [note.video, note.videoInfo, note.video_info].forEach((value) => collectVideoUrlsFromValue(value, urls));
+  return urls.map((url) => ({ type: "video", url, ext: "mp4" }));
+}
+
 interface XhsUserResponse {
   data?: {
     user_id?: string;
@@ -90,6 +149,9 @@ interface XhsFeedResponse {
             url?: string;
           }>;
         }>;
+        video?: unknown;
+        videoInfo?: unknown;
+        video_info?: unknown;
       };
     }>;
   };
@@ -165,6 +227,7 @@ export class XhsApi {
         ext: "jpg"
       }))
       .filter((item) => item.url);
+    const videos = collectVideoMedia(note);
     const comments: XhsComment[] = (note.comment_list ?? note.comments ?? [])
       .map((comment) => ({
         author: comment.user?.nickname ?? comment.user?.nick_name ?? comment.user?.name ?? "",
@@ -185,7 +248,7 @@ export class XhsApi {
       content,
       createdAt: note.time ? new Date(note.time).toISOString() : undefined,
       updatedAt: note.last_update_time ? new Date(note.last_update_time).toISOString() : undefined,
-      media: images,
+      media: [...images, ...videos],
       comments
     };
   }
