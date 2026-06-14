@@ -70,6 +70,13 @@ export default class XhsVaultSyncPlugin extends Plugin {
       cookies: "",
       syncCursors: { ...(loaded?.syncCursors ?? {}) },
       syncedIds: { ...(loaded?.syncedIds ?? {}) },
+      syncTargets: [...(loaded?.syncTargets ?? defaults.syncTargets)],
+      downloadVideos: loaded?.downloadVideos ?? defaults.downloadVideos,
+      allSynced: { ...(loaded?.allSynced ?? {}) },
+      albumWhitelist: { ...(loaded?.albumWhitelist ?? {}) },
+      bookmarkCateNextCursor: { ...(loaded?.bookmarkCateNextCursor ?? {}) },
+      cateSyncAllBookmark: { ...(loaded?.cateSyncAllBookmark ?? {}) },
+      perAccountState: { ...(loaded?.perAccountState ?? {}) },
       syncStatusSnapshot: {
         ...defaults.syncStatusSnapshot,
         ...(loaded?.syncStatusSnapshot ?? {}),

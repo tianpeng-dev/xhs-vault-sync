@@ -205,6 +205,13 @@ describe("插件状态栏契约", () => {
       cookies: "",
       syncCursors: { bookmark: "cursor-1" },
       syncedIds: { note1: true },
+      syncTargets: ["bookmark"],
+      downloadVideos: false,
+      allSynced: {},
+      albumWhitelist: {},
+      bookmarkCateNextCursor: {},
+      cateSyncAllBookmark: {},
+      perAccountState: {},
       hasSeenOnboarding: false,
       syncLog: [
         {

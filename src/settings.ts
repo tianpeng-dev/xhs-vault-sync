@@ -1,7 +1,17 @@
 import type { SyncLogEntry, SyncStatusSnapshot } from "./sync/status";
 import { createIdleStatus } from "./sync/status";
 
-export type SyncTarget = "bookmark";
+export type SyncTarget = "bookmark" | "post" | "like" | "album";
+
+export interface AccountSyncState {
+  syncCursors: Record<string, string>;
+  syncedIds: Record<string, true>;
+  allSynced: Record<string, boolean>;
+  albumWhitelist: Record<string, true>;
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
+  nextSyncIndex: number;
+}
 
 export interface XhsVaultSyncSettings {
   rootFolder: string;
@@ -9,13 +19,20 @@ export interface XhsVaultSyncSettings {
   syncIntervalMinutes: number;
   syncBatchSize: number;
   activeSyncTarget: SyncTarget;
+  syncTargets: SyncTarget[];
   downloadImages: boolean;
+  downloadVideos: boolean;
   cookies: string;
   a1Cookie: string;
   userId: string;
   userName: string;
   syncCursors: Record<string, string>;
   syncedIds: Record<string, true>;
+  allSynced: Record<string, boolean>;
+  albumWhitelist: Record<string, true>;
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
+  perAccountState: Record<string, AccountSyncState>;
   nextSyncIndex: number;
   lastSyncAt: number;
   hasSeenOnboarding: boolean;
@@ -46,13 +63,20 @@ export function createDefaultSettings(): XhsVaultSyncSettings {
     syncIntervalMinutes: 10,
     syncBatchSize: 5,
     activeSyncTarget: "bookmark",
+    syncTargets: ["bookmark"],
     downloadImages: true,
+    downloadVideos: false,
     cookies: "",
     a1Cookie: "",
     userId: "",
     userName: "",
     syncCursors: {},
     syncedIds: {},
+    allSynced: {},
+    albumWhitelist: {},
+    bookmarkCateNextCursor: {},
+    cateSyncAllBookmark: {},
+    perAccountState: {},
     nextSyncIndex: 1,
     lastSyncAt: 0,
     hasSeenOnboarding: false,
