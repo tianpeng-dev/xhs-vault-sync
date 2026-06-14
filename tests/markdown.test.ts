@@ -65,6 +65,24 @@ describe("renderNoteMarkdown", () => {
     expect(markdown).not.toContain('src="RedNote/Media/note1/a"b');
   });
 
+  it("renders local videos as HTML video tags and remote videos as links", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "Test Note",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [
+        { type: "video", url: "https://example.com/a.mp4", localPath: "RedNote/Media/note1/video-1.mp4" },
+        { type: "video", url: "https://example.com/b.mp4" }
+      ]
+    });
+
+    expect(markdown).toContain('<video controls src="RedNote/Media/note1/video-1.mp4"></video>');
+    expect(markdown).toContain("[video link](https://example.com/b.mp4)");
+  });
+
   it("renders unavailable text for unsafe remote media URLs", () => {
     const markdown = renderNoteMarkdown({
       id: "note1",

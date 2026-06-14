@@ -1,10 +1,11 @@
-import { Notice, requestUrl } from "obsidian";
+import { Notice } from "obsidian";
 import type XhsVaultSyncPlugin from "../main";
 import type { BookmarkPage, XhsComment, XhsNote } from "./types";
 import { VaultWriter } from "../vault/vault-writer";
 import { XhsApi } from "../xhs/api";
 import { readXhsCookieHeader } from "../xhs/cookies";
 import { SignManager } from "../xhs/sign-manager";
+import { downloadMedia } from "./media-downloader";
 import { sanitizeStatusMessage } from "./status";
 
 export function shouldSyncNote(syncedIds: Record<string, true>, noteId: string): boolean {
@@ -119,19 +120,18 @@ export class SyncEngine {
         }
         detail.comments = filterWenYiWenAnswers(detail.comments);
 
-        if (this.plugin.settings.downloadImages) {
-          for (let index = 0; index < detail.media.length; index++) {
-            const media = detail.media[index];
-            if (media.type !== "image") continue;
-            const response = await requestUrl({ url: media.url, method: "GET", throw: false });
-            if (response.status >= 200 && response.status < 300) {
-              media.localPath = await writer.writeMedia(
-                detail.id,
-                index + 1,
-                response.arrayBuffer,
-                media.ext ?? "jpg"
-              );
-            }
+        for (let index = 0; index < detail.media.length; index++) {
+          const media = detail.media[index];
+          if (media.type === "image" && !this.plugin.settings.downloadImages) continue;
+          if (media.type === "video" && !this.plugin.settings.downloadVideos) continue;
+
+          const result = await downloadMedia(media);
+          if (result.data) {
+            media.localPath = media.type === "video"
+              ? await writer.writeVideo(detail.id, index + 1, result.data, result.ext)
+              : await writer.writeMedia(detail.id, index + 1, result.data, result.ext);
+          } else if (result.error) {
+            media.downloadError = result.error;
           }
         }
 

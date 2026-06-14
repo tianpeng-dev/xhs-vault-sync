@@ -50,4 +50,18 @@ export class VaultWriter {
     await this.app.vault.createBinary(path, data);
     return path;
   }
+
+  async writeVideo(noteId: string, index: number, data: ArrayBuffer, ext: string): Promise<string> {
+    const folder = normalizePath(joinVaultPath(this.rootFolder, "Media", safeFileName(noteId)));
+    await this.ensureFolder(folder);
+    const path = normalizePath(joinVaultPath(folder, `video-${index}.${ext || "mp4"}`));
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      await this.app.vault.delete(existing);
+    } else if (existing) {
+      throw new Error(`Vault path exists but is not a file: ${path}`);
+    }
+    await this.app.vault.createBinary(path, data);
+    return path;
+  }
 }

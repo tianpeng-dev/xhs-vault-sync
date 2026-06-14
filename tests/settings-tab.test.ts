@@ -117,12 +117,15 @@ describe("XhsVaultSyncSettingTab", () => {
 
     tab.display();
 
-    const inputs = collectInputs(tab.containerEl as ElementNode);
+    const container = tab.containerEl as ElementNode;
+    expect(collectText(container)).toContain("下载视频");
+    const inputs = collectInputs(container);
     inputs[0].change?.(true);
     inputs[1].change?.("3");
     inputs[2].change?.("  ");
     inputs[3].change?.("20");
     inputs[4].change?.(false);
+    inputs[5].change?.(true);
 
     await Promise.resolve();
     expect(plugin.settings.autoSyncEnabled).toBe(true);
@@ -130,7 +133,8 @@ describe("XhsVaultSyncSettingTab", () => {
     expect(plugin.settings.rootFolder).toBe("RedNote");
     expect(plugin.settings.syncBatchSize).toBe(10);
     expect(plugin.settings.downloadImages).toBe(false);
-    expect(saveSettings).toHaveBeenCalledTimes(5);
+    expect(plugin.settings.downloadVideos).toBe(true);
+    expect(saveSettings).toHaveBeenCalledTimes(6);
     expect(startSyncInterval).toHaveBeenCalledTimes(2);
   });
 });

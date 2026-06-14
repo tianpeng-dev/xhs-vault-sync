@@ -66,4 +66,18 @@ describe("VaultWriter", () => {
 
     expect(app.vault.create).toHaveBeenCalledWith(expect.stringContaining("0012-Same title-note-a.md"), expect.any(String));
   });
+
+  it("writes video binaries under the note media folder", async () => {
+    const app = createAppMock();
+    const writer = new VaultWriter(app as never, "RedNote");
+    const data = new ArrayBuffer(8);
+
+    const path = await writer.writeVideo("note/a", 2, data, "");
+
+    expect(path).toBe("RedNote/Media/note a/video-2.mp4");
+    expect(app.vault.createFolder).toHaveBeenCalledWith("RedNote");
+    expect(app.vault.createFolder).toHaveBeenCalledWith("RedNote/Media");
+    expect(app.vault.createFolder).toHaveBeenCalledWith("RedNote/Media/note a");
+    expect(app.vault.createBinary).toHaveBeenCalledWith("RedNote/Media/note a/video-2.mp4", data);
+  });
 });

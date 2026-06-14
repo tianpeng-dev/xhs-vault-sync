@@ -111,5 +111,17 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName("下载视频")
+      .setDesc("将视频笔记保存到库中，而不是引用远程链接。")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.downloadVideos)
+          .onChange(async (value) => {
+            this.plugin.settings.downloadVideos = value;
+            await this.plugin.saveSettings();
+          })
+      );
   }
 }

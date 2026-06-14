@@ -6,6 +6,7 @@ import {
   SyncEngine,
   userFacingSyncError
 } from "../src/sync/sync-engine";
+import { __setRequestUrlMock } from "./mocks/obsidian";
 
 const syncEngineMocks = vi.hoisted(() => {
   const signer = {
@@ -21,7 +22,8 @@ const syncEngineMocks = vi.hoisted(() => {
   };
   const writer = {
     writeNote: vi.fn(),
-    writeMedia: vi.fn()
+    writeMedia: vi.fn(),
+    writeVideo: vi.fn()
   };
 
   return {
@@ -114,6 +116,8 @@ describe("sync state helpers", () => {
     );
     syncEngineMocks.writer.writeNote.mockResolvedValue(undefined);
     syncEngineMocks.writer.writeMedia.mockResolvedValue("media-path");
+    syncEngineMocks.writer.writeVideo.mockResolvedValue("video-path");
+    __setRequestUrlMock(null);
   });
 
   it("skips already synced note ids", () => {
@@ -608,6 +612,80 @@ describe("sync state helpers", () => {
     );
   });
 
+  it("downloads videos and writes the local path when video downloads are enabled", async () => {
+    const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, downloadVideos: true });
+    const engine = new SyncEngine(plugin);
+    const videoData = new ArrayBuffer(16);
+    __setRequestUrlMock(vi.fn(async (options) => {
+      expect(options).toEqual({
+        url: "https://video.example.com/clip",
+        method: "GET",
+        throw: false,
+        headers: { Range: "bytes=0-" }
+      });
+      return { status: 206, arrayBuffer: videoData };
+    }));
+    syncEngineMocks.api.getNoteDetail.mockResolvedValue({
+      id: "video-note",
+      title: "视频笔记",
+      author: "",
+      url: "https://example.com/video-note",
+      tags: [],
+      content: "视频正文",
+      media: [{ type: "video", url: "http://video.example.com/clip" }],
+      comments: []
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeVideo).toHaveBeenCalledWith("video-note", 1, videoData, "mp4");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "video-note",
+        media: [
+          {
+            type: "video",
+            url: "http://video.example.com/clip",
+            localPath: "video-path"
+          }
+        ]
+      })
+    );
+  });
+
+  it("records video download errors and still writes the note", async () => {
+    const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, downloadVideos: true });
+    const engine = new SyncEngine(plugin);
+    __setRequestUrlMock(vi.fn(async () => ({ status: 403, arrayBuffer: new ArrayBuffer(0) })));
+    syncEngineMocks.api.getNoteDetail.mockResolvedValue({
+      id: "video-note",
+      title: "视频笔记",
+      author: "",
+      url: "https://example.com/video-note",
+      tags: [],
+      content: "视频正文",
+      media: [{ type: "video", url: "https://video.example.com/denied", ext: "mov" }],
+      comments: []
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeVideo).not.toHaveBeenCalled();
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "video-note",
+        media: [
+          {
+            type: "video",
+            url: "https://video.example.com/denied",
+            ext: "mov",
+            downloadError: expect.stringContaining("HTTP 403")
+          }
+        ]
+      })
+    );
+  });
+
   it("redacts unknown raw sync errors before storing status", async () => {
     const plugin = createPluginHarness();
     const engine = new SyncEngine(plugin);
@@ -644,6 +722,7 @@ function createPluginHarness(overrides: Partial<{
   syncedIds: Record<string, true>;
   syncBatchSize: number;
   nextSyncIndex: number;
+  downloadVideos: boolean;
 }> = {}) {
   const settings = {
     a1Cookie: "session",
@@ -662,7 +741,7 @@ function createPluginHarness(overrides: Partial<{
     syncTargets: ["bookmark" as const],
     syncBatchSize: overrides.syncBatchSize ?? 2,
     downloadImages: false,
-    downloadVideos: false,
+    downloadVideos: overrides.downloadVideos ?? false,
     rootFolder: "RedNote",
     lastSyncAt: 0,
     lastSyncError: "",
