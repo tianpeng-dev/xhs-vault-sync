@@ -1,15 +1,35 @@
 /* XHS Vault Sync */
-var X=Object.defineProperty;var M=Object.getOwnPropertyDescriptor;var F=Object.getOwnPropertyNames;var R=Object.prototype.hasOwnProperty;var D=(s,t)=>{for(var e in t)X(s,e,{get:t[e],enumerable:!0})},B=(s,t,e,n)=>{if(t&&typeof t=="object"||typeof t=="function")for(let i of F(t))!R.call(s,i)&&i!==e&&X(s,i,{get:()=>t[i],enumerable:!(n=M(t,i))||n.enumerable});return s};var H=s=>B(X({},"__esModule",{value:!0}),s);var q={};D(q,{default:()=>N});module.exports=H(q);var P=require("obsidian");function f(){return{rootFolder:"RedNote",autoSyncEnabled:!1,syncIntervalMinutes:10,syncBatchSize:5,activeSyncTarget:"bookmark",downloadImages:!0,cookies:"",a1Cookie:"",userId:"",userName:"",syncCursors:{},syncedIds:{},lastSyncAt:0}}var Y=f();var g=require("obsidian");var c=require("obsidian");var U=/[\\/:*?"<>|#^[\]]/g;function $(s,t="Untitled"){let e=s.replace(U," ").replace(/\s+/g," ").trim();return!e||e==="."||e===".."?t.slice(0,120):e.slice(0,120)}function v(...s){return s.flatMap(t=>t.replace(/^\/+|\/+$/g,"").split("/")).filter(t=>t&&t!=="."&&t!=="..").join("/")}function d(s){return JSON.stringify(s)}function V(s){return s.replace(/[\[\]]+/g," ").trim()}function j(s){return s.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function L(s){try{let t=new URL(s);return t.protocol!=="http:"&&t.protocol!=="https:"?void 0:t.href.replace(/\)/g,"%29")}catch{return}}function C(s){let t=s.tags.map(n=>`  - ${d(n)}`).join(`
-`),e=s.media.map(n=>{if(n.localPath&&n.type==="image")return`![[${V(n.localPath)}]]`;if(n.localPath&&n.type==="video")return`<video controls src="${j(n.localPath)}"></video>`;let i=L(n.url);return i?`[${n.type} link](${i})`:`[${n.type} link unavailable]`}).join(`
+var K=Object.defineProperty;var oe=Object.getOwnPropertyDescriptor;var ae=Object.getOwnPropertyNames;var ce=Object.prototype.hasOwnProperty;var le=(e,t)=>{for(var n in t)K(e,n,{get:t[n],enumerable:!0})},ue=(e,t,n,s)=>{if(t&&typeof t=="object"||typeof t=="function")for(let r of ae(t))!ce.call(e,r)&&r!==n&&K(e,r,{get:()=>t[r],enumerable:!(s=oe(t,r))||s.enumerable});return e};var de=e=>ue(K({},"__esModule",{value:!0}),e);var We={};le(We,{default:()=>H});module.exports=de(We);var R=require("obsidian");var me=/\b(cookie|token|xsec|xsec_token|a1|web_session|id_token)\s*=\s*[^\s&]+/gi,ge=/(["']?\b(cookie|token|xsec|xsec_token|a1|web_session|id_token)\b["']?\s*:\s*)["']?[^"',\s}]+["']?/gi,pe=/\bauthorization\s*:\s*bearer\s+[^\s,}]+/gi;function S(e=0){return{phase:"idle",message:"\u7B49\u5F85\u540C\u6B65",updatedAt:e,discoveredCount:0,savedCount:0,skippedCount:0}}function u(e){return e.replace(me,(t,n)=>`${n}=[redacted]`).replace(ge,(t,n)=>{let s=n.trimStart().startsWith('"');return`${n}${s?'"[redacted]"':"[redacted]"}`}).replace(pe,"authorization: bearer [redacted]")}function te(e,t){return[...e,{...t,message:u(t.message)}].slice(-50)}function C(e){let t=u(e.message||"\u7B49\u5F85\u540C\u6B65");switch(e.phase){case"not_logged_in":return"\u5C0F\u7EA2\u4E66\uFF1A\u672A\u767B\u5F55";case"idle":return`\u5C0F\u7EA2\u4E66\uFF1A${t}`;case"opening_xhs":return"\u5C0F\u7EA2\u4E66\uFF1A\u6B63\u5728\u6253\u5F00\u5C0F\u7EA2\u4E66";case"collecting":return`\u5C0F\u7EA2\u4E66\uFF1A\u6B63\u5728\u8BFB\u53D6\u6536\u85CF\uFF08\u5DF2\u53D1\u73B0 ${e.discoveredCount} \u6761\uFF09`;case"saving":return`\u5C0F\u7EA2\u4E66\uFF1A\u6B63\u5728\u4FDD\u5B58 ${e.currentIndex??e.savedCount} / ${e.totalCount??e.discoveredCount}`;case"complete":return`\u5C0F\u7EA2\u4E66\uFF1A\u540C\u6B65\u5B8C\u6210\uFF08\u5DF2\u4FDD\u5B58 ${e.savedCount} \u6761\uFF0C\u5DF2\u8DF3\u8FC7 ${e.skippedCount} \u6761\uFF09`;case"failed":return`\u5C0F\u7EA2\u4E66\uFF1A\u540C\u6B65\u5931\u8D25\uFF1A${u(e.lastError||e.message||"\u672A\u77E5\u9519\u8BEF")}`}}function T(){return{rootFolder:"RedNote",autoSyncEnabled:!1,syncIntervalMinutes:10,syncBatchSize:5,activeSyncTarget:"bookmark",downloadImages:!0,cookies:"",a1Cookie:"",userId:"",userName:"",syncCursors:{},syncedIds:{},nextSyncIndex:1,lastSyncAt:0,hasSeenOnboarding:!1,syncStatusSnapshot:S(),syncLog:[],lastSyncError:"",lastBookmarkDebug:void 0}}var Ye=T();var k=require("obsidian");var m=require("obsidian");var he=/[\\/:*?"<>|#^[\]]/g;function W(e,t="Untitled"){let n=e.replace(he," ").replace(/\s+/g," ").trim();return!n||n==="."||n===".."?t.slice(0,120):n.slice(0,120)}function A(...e){return e.flatMap(t=>t.replace(/^\/+|\/+$/g,"").split("/")).filter(t=>t&&t!=="."&&t!=="..").join("/")}function p(e){return JSON.stringify(e)}function fe(e){return e.replace(/[\[\]]+/g," ").trim()}function ye(e){return e.replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}function ve(e){try{let t=new URL(e);return t.protocol!=="http:"&&t.protocol!=="https:"?void 0:t.href.replace(/\)/g,"%29")}catch{return}}function we(e){return e.replace(/\r\n/g,`
+`).replace(/\n{3,}/g,`
 
-`);return["---",`source: ${d("xiaohongshu")}`,`resourceId: ${d(s.id)}`,`title: ${d(s.title)}`,`author: ${d(s.author)}`,`url: ${d(s.url)}`,s.createdAt?`createdAt: ${d(s.createdAt)}`:void 0,s.updatedAt?`updatedAt: ${d(s.updatedAt)}`:void 0,"tags:",t||'  - "xhs"',"---","",`# ${s.title||"Untitled"}`,"",s.content||"(No content)","",e].filter(n=>n!==void 0).join(`
+`).trim()}function Se(e){return e.trim()==="\u95EE\u4E00\u95EE"}function ne(e){let t=e.tags.map(r=>`  - ${p(r)}`).join(`
+`),n=e.media.map(r=>{if(r.localPath&&r.type==="image")return`![[${fe(r.localPath)}]]`;if(r.localPath&&r.type==="video")return`<video controls src="${ye(r.localPath)}"></video>`;let i=ve(r.url);return i?`[${r.type} link](${i})`:`[${r.type} link unavailable]`}).join(`
+
+`),s=(e.comments??[]).filter(r=>Se(r.author)).filter(r=>r.content.trim()).map((r,i)=>[`### \u56DE\u7B54 ${i+1}`,"",we(r.content)].join(`
+`)).join(`
+
+`);return["---",`source: ${p("xiaohongshu")}`,`resourceId: ${p(e.id)}`,`title: ${p(e.title)}`,`author: ${p(e.author)}`,`url: ${p(e.url)}`,e.syncIndex?`syncIndex: ${e.syncIndex}`:void 0,e.syncedAt?`syncedAt: ${p(e.syncedAt)}`:void 0,e.createdAt?`createdAt: ${p(e.createdAt)}`:void 0,e.updatedAt?`updatedAt: ${p(e.updatedAt)}`:void 0,"tags:",t||'  - "xhs"',"---","",`# ${e.title||"Untitled"}`,"",e.content||"(No content)","",n||void 0,s?"## \u95EE\u4E00\u95EE\u56DE\u7B54":void 0,s?"":void 0,s||void 0].filter(r=>r!==void 0).join(`
 `).trimEnd().concat(`
-`)}var S=class{constructor(t,e){this.app=t;this.rootFolder=e}app;rootFolder;async ensureFolder(t){let e=(0,c.normalizePath)(t),n=this.app.vault.getAbstractFileByPath(e);if(n instanceof c.TFolder)return;if(n)throw new Error(`Vault path exists but is not a folder: ${e}`);let i=e.split("/").slice(0,-1).join("/");i&&await this.ensureFolder(i),await this.app.vault.createFolder(e)}async writeNote(t){await this.ensureFolder(this.rootFolder);let e=`${$(`${t.title||"Untitled"}-${t.id}`)}.md`,n=(0,c.normalizePath)(v(this.rootFolder,e)),i=C(t),r=this.app.vault.getAbstractFileByPath(n);if(r instanceof c.TFile)await this.app.vault.modify(r,i);else{if(r)throw new Error(`Vault path exists but is not a file: ${n}`);await this.app.vault.create(n,i)}return n}async writeMedia(t,e,n,i){let r=(0,c.normalizePath)(v(this.rootFolder,"Media",$(t)));await this.ensureFolder(r);let a=(0,c.normalizePath)(v(r,`image-${e}.${i||"jpg"}`)),o=this.app.vault.getAbstractFileByPath(a);if(o instanceof c.TFile)await this.app.vault.delete(o);else if(o)throw new Error(`Vault path exists but is not a file: ${a}`);return await this.app.vault.createBinary(a,n),a}};var A=require("obsidian");var l={web:"https://www.xiaohongshu.com",explore:"https://www.xiaohongshu.com/explore",api:"https://edith.xiaohongshu.com"};var O="/api/sns/web/v2/user/me",J="/api/sns/web/v2/note/collect/page",W="/api/sns/web/v1/feed",b=class{constructor(t,e){this.signer=t;this.cookies=e}signer;cookies;async getCurrentUser(){let e=(await this.signedGet(O)).data;if(!e?.user_id||e.guest)throw new Error("Not logged in");return{userId:e.user_id,userName:e.nickname??""}}async getBookmarks(t,e){let n=new URLSearchParams({cursor:t,num:String(e),image_formats:"jpg,webp,avif"}),i=await this.signedGet(`${J}?${n.toString()}`);return{notes:(i.data?.notes??[]).map(a=>({noteId:a.note_id??a.id??"",xsecToken:a.xsec_token??""})).filter(a=>a.noteId),cursor:i.data?.cursor??"",hasMore:!!i.data?.has_more}}async getNoteDetail(t,e){let n={source_note_id:t,image_formats:["jpg","webp","avif"],extra:{need_body_topic:"1"},xsec_source:"pc_collect",xsec_token:e},r=(await this.signedPost(W,n)).data?.items?.[0]?.note_card;if(!r)return null;let a=(r.image_list??[]).map(o=>({type:"image",url:o.url_default??o.url??o.info_list?.[0]?.url??"",ext:"jpg"})).filter(o=>o.url);return{id:r.note_id??t,title:r.display_title??r.title??"Untitled",author:r.user?.nickname??"",url:`${l.web}/explore/${t}?xsec_token=${encodeURIComponent(e)}`,tags:(r.tag_list??[]).map(o=>o.name??"").filter(Boolean),content:r.desc??"",createdAt:r.time?new Date(r.time).toISOString():void 0,updatedAt:r.last_update_time?new Date(r.last_update_time).toISOString():void 0,media:a}}async signedGet(t){let e=await this.signer.sign(t),n=await(0,A.requestUrl)({url:`${l.api}${t}`,method:"GET",headers:{...e,"Content-Type":"application/json",Cookie:this.cookies,Origin:l.web,Referer:`${l.web}/`},throw:!1});if(n.status>=400)throw new Error(`XHS HTTP ${n.status}`);return n.json}async signedPost(t,e){let n=await this.signer.sign(t,e),i=await(0,A.requestUrl)({url:`${l.api}${t}`,method:"POST",headers:{...n,"Content-Type":"application/json",Cookie:this.cookies,Origin:l.web,Referer:`${l.web}/`},body:JSON.stringify(e),throw:!1});if(i.status>=400)throw new Error(`XHS HTTP ${i.status}`);return i.json}};var x=class{webviewEl=null;ready=!1;async initWebview(){if(this.ready&&this.webviewEl)return;let t=document.createElement("webview");t.setAttribute("src",l.explore),t.setAttribute("partition","persist:xhs-vault-sync"),t.setAttribute("allowpopups","false"),t.setAttribute("style","position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;"),document.body.appendChild(t),this.webviewEl=t;try{await new Promise((e,n)=>{let i=window.setTimeout(()=>n(new Error("Webview load timeout")),3e4);t.addEventListener("did-finish-load",()=>{window.clearTimeout(i),this.ready=!0,e()}),t.addEventListener("did-fail-load",()=>{window.clearTimeout(i),n(new Error("Webview failed to load"))})})}catch(e){throw this.destroy(),e}}destroy(){this.webviewEl?.parentElement?.removeChild(this.webviewEl),this.webviewEl=null,this.ready=!1}async sign(t,e){if(!this.webviewEl?.executeJavaScript)throw new Error("Sign webview is not ready");let n=this.buildInjectScript(t,e??null),i=await this.webviewEl.executeJavaScript(n);if(!i)throw new Error("Sign inject returned no result");if(i.error)throw new Error(`Sign inject failed: ${i.error}`);if(!i["x-s"]||!i["x-t"]||!i["x-s-common"]||!i["x-b3-traceid"])throw new Error("Sign inject returned incomplete headers");return i}buildInjectScript(t,e){return`
+`)}var N=class{constructor(t,n){this.app=t;this.rootFolder=n}app;rootFolder;async ensureFolder(t){let n=(0,m.normalizePath)(t),s=this.app.vault.getAbstractFileByPath(n);if(s instanceof m.TFolder)return;if(s)throw new Error(`Vault path exists but is not a folder: ${n}`);let r=n.split("/").slice(0,-1).join("/");r&&await this.ensureFolder(r),await this.app.vault.createFolder(n)}async writeNote(t){await this.ensureFolder(this.rootFolder);let n=t.syncIndex?`${String(t.syncIndex).padStart(4,"0")}-`:"",s=`${W(`${n}${t.title||"Untitled"}-${t.id}`)}.md`,r=(0,m.normalizePath)(A(this.rootFolder,s)),i=ne(t),o=this.app.vault.getAbstractFileByPath(r);if(o instanceof m.TFile)await this.app.vault.modify(o,i);else{if(o)throw new Error(`Vault path exists but is not a file: ${r}`);await this.app.vault.create(r,i)}return r}async writeMedia(t,n,s,r){let i=(0,m.normalizePath)(A(this.rootFolder,"Media",W(t)));await this.ensureFolder(i);let o=(0,m.normalizePath)(A(i,`image-${n}.${r||"jpg"}`)),c=this.app.vault.getAbstractFileByPath(o);if(c instanceof m.TFile)await this.app.vault.delete(c);else if(c)throw new Error(`Vault path exists but is not a file: ${o}`);return await this.app.vault.createBinary(o,s),o}};var z=require("obsidian");var l={web:"https://www.xiaohongshu.com",explore:"https://www.xiaohongshu.com/explore",api:"https://edith.xiaohongshu.com"};var xe="/api/sns/web/v2/user/me",ke="/api/sns/web/v2/note/collect/page",be="/api/sns/web/v1/feed";function L(e){if(!(typeof e!="string"&&typeof e!="number"&&typeof e!="boolean"))return String(e).replace(/[A-Za-z0-9_-]{16,}/g,"[redacted]").slice(0,120)}function Ee(e){return e!=null&&String(e)!=="0"}function _e(e){return e.trim().toLowerCase()==="sorry, this page isn't available right now."}var P=class{constructor(t,n){this.signer=t;this.cookies=n}signer;cookies;async getCurrentUser(){let n=(await this.signedGet(xe)).data;if(!n?.user_id||n.guest)throw new Error("Not logged in");return{userId:n.user_id,userName:n.nickname??""}}async getBookmarks(t,n,s){let r=new URLSearchParams({user_id:t,cursor:n,num:String(s),image_formats:"jpg,webp,avif"}),i=await this.signedGet(`${ke}?${r.toString()}`),o=i.data?.notes??[],c=L(i.msg||i.message);if(!Array.isArray(i.data?.notes)&&(c||Ee(i.code)))throw new Error(`XHS bookmark API rejected: ${c||L(i.code)||"unknown error"}`);return{notes:o.map(d=>({noteId:d.note_id??d.id??"",xsecToken:d.xsec_token??""})).filter(d=>d.noteId),cursor:i.data?.cursor??"",hasMore:!!i.data?.has_more,debug:{topLevelKeys:Object.keys(i).sort(),dataKeys:Object.keys(i.data??{}).sort(),noteCount:o.length,hasMore:!!i.data?.has_more,cursorPresent:!!i.data?.cursor,codeType:typeof i.code,codeValue:L(i.code),messagePresent:!!(i.msg||i.message),messagePreview:L(i.msg||i.message)}}}async getNoteDetail(t,n){let s={source_note_id:t,image_formats:["jpg","webp","avif"],extra:{need_body_topic:"1"},xsec_source:"pc_collect",xsec_token:n},i=(await this.signedPost(be,s)).data?.items?.[0]?.note_card;if(!i)return null;let o=i.display_title??i.title??"Untitled",c=i.desc??"";if(_e(o)&&!c.trim())return null;let y=(i.image_list??[]).map(a=>({type:"image",url:a.url_default??a.url??a.info_list?.[0]?.url??"",ext:"jpg"})).filter(a=>a.url),d=(i.comment_list??i.comments??[]).map(a=>({author:a.user?.nickname??a.user?.nick_name??a.user?.name??"",content:a.content??a.text??"",createdAt:a.create_time||a.time?new Date(a.create_time??a.time??0).toISOString():void 0,likes:a.like_count==null?void 0:String(a.like_count)})).filter(a=>a.content.trim());return{id:i.note_id??t,title:o,author:i.user?.nickname??"",url:`${l.web}/explore/${t}?xsec_token=${encodeURIComponent(n)}`,tags:(i.tag_list??[]).map(a=>a.name??"").filter(Boolean),content:c,createdAt:i.time?new Date(i.time).toISOString():void 0,updatedAt:i.last_update_time?new Date(i.last_update_time).toISOString():void 0,media:y,comments:d}}async signedGet(t){if(this.signer.signedFetchJson)return this.signer.signedFetchJson("GET",t);let n=await this.signer.sign(t),s=await(0,z.requestUrl)({url:`${l.api}${t}`,method:"GET",headers:{...n,"Content-Type":"application/json",Cookie:this.cookies,Origin:l.web,Referer:`${l.web}/`},throw:!1});if(s.status>=400)throw new Error(`XHS HTTP ${s.status}`);return s.json}async signedPost(t,n){if(this.signer.signedFetchJson)return this.signer.signedFetchJson("POST",t,n);let s=await this.signer.sign(t,n),r=await(0,z.requestUrl)({url:`${l.api}${t}`,method:"POST",headers:{...s,"Content-Type":"application/json",Cookie:this.cookies,Origin:l.web,Referer:`${l.web}/`},body:JSON.stringify(n),throw:!1});if(r.status>=400)throw new Error(`XHS HTTP ${r.status}`);return r.json}};var x="persist:xhs-vault-sync";function Ie(e){let t=new Map;for(let n of e.split(";")){let s=n.trim();if(!s)continue;let r=s.indexOf("=");r<=0||t.set(s.slice(0,r),s.slice(r+1))}return t}function Ce(e,t){let n=Ie(e);for(let s of t)!s.name||!s.value||n.set(s.name,s.value);return Array.from(n.entries()).map(([s,r])=>`${s}=${r}`).join("; ")}function Te(){let e=require("electron");return e.session?.fromPartition(x)??e.remote?.session?.fromPartition(x)??null}async function O(e){let t=Te();if(!t)return e;let[n,s]=await Promise.all([t.cookies.get({domain:"xiaohongshu.com"}),t.cookies.get({url:l.api})]);return Ce(e,[...n,...s])}var X=class{webviewEl=null;ready=!1;async initWebview(){if(this.ready&&this.webviewEl)return;let t=document.createElement("webview");t.setAttribute("src",l.explore),t.setAttribute("partition",x),t.setAttribute("allowpopups","false"),t.setAttribute("style","position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;"),document.body.appendChild(t),this.webviewEl=t;try{await new Promise((n,s)=>{let r=window.setTimeout(()=>s(new Error("Webview load timeout")),3e4);t.addEventListener("did-finish-load",()=>{window.clearTimeout(r),this.ready=!0,n()}),t.addEventListener("did-fail-load",()=>{window.clearTimeout(r),s(new Error("Webview failed to load"))})})}catch(n){throw this.destroy(),n}}async loadUrl(t){if(!this.webviewEl)throw new Error("Sign webview is not ready");await new Promise((n,s)=>{let r=window.setTimeout(()=>s(new Error("Webview load timeout")),3e4),i=()=>{window.clearTimeout(r),this.webviewEl?.removeEventListener("did-finish-load",o),this.webviewEl?.removeEventListener("did-fail-load",c)},o=()=>{i(),n()},c=()=>{i(),s(new Error("Webview failed to load"))};this.webviewEl?.addEventListener("did-finish-load",o),this.webviewEl?.addEventListener("did-fail-load",c),this.webviewEl?.setAttribute("src",t)})}destroy(){this.webviewEl?.parentElement?.removeChild(this.webviewEl),this.webviewEl=null,this.ready=!1}async sign(t,n){if(!this.webviewEl?.executeJavaScript)throw new Error("Sign webview is not ready");let s=this.buildInjectScript(t,n??null),r=await this.webviewEl.executeJavaScript(s);if(!r)throw new Error("Sign inject returned no result");if(r.error)throw new Error(`Sign inject failed: ${r.error}`);if(!r["x-s"]||!r["x-t"]||!r["x-s-common"]||!r["x-b3-traceid"])throw new Error("Sign inject returned incomplete headers");return r}async signedFetchJson(t,n,s){if(!this.webviewEl?.executeJavaScript)throw new Error("Sign webview is not ready");let r=this.buildFetchScript(t,n,s??null),i=await this.webviewEl.executeJavaScript(r);if(!i)throw new Error("Webview fetch returned no result");if(i.error)throw new Error(`Webview fetch failed: ${i.error}`);if((i.status??0)>=400)throw new Error(`XHS HTTP ${i.status}`);return i.json}async collectBookmarks(t,n){if(await this.loadUrl(`${l.web}/user/profile/${encodeURIComponent(t)}`),!this.webviewEl?.executeJavaScript)throw new Error("Sign webview is not ready");let s=await this.webviewEl.executeJavaScript(this.buildBookmarkCollectorScript(n));if(!s)throw new Error("Bookmark collector returned no result");return s}async collectNoteDetail(t){let n=t.xsecToken?`${l.web}/explore/${encodeURIComponent(t.noteId)}?xsec_token=${encodeURIComponent(t.xsecToken)}`:`${l.web}/explore/${encodeURIComponent(t.noteId)}`;if(await this.loadUrl(n),!this.webviewEl?.executeJavaScript)throw new Error("Sign webview is not ready");let s=await this.webviewEl.executeJavaScript(this.buildNoteDetailCollectorScript(t));return Ae(s)||!s?.content?.trim()&&!s?.media?.length&&!s?.comments?.length?null:s}buildInjectScript(t,n){return`
       (function() {
         try {
           var apiUrl = ${JSON.stringify(t)};
-          var apiData = ${JSON.stringify(e)};
+          var apiData = ${JSON.stringify(n)};
           var timestamp = Date.now();
+          if (typeof window._webmsxyw === "function") {
+            var nativeSign = window._webmsxyw(apiUrl, apiData);
+            var nativeTraceId = "";
+            var nativeTraceChars = "abcdef0123456789";
+            for (var nativeTraceIndex = 0; nativeTraceIndex < 16; nativeTraceIndex++) {
+              nativeTraceId += nativeTraceChars.charAt(Math.floor(Math.random() * nativeTraceChars.length));
+            }
+            return {
+              "x-s": nativeSign["X-s"] || nativeSign["x-s"],
+              "x-t": String(nativeSign["X-t"] || nativeSign["x-t"] || timestamp),
+              "x-s-common": nativeSign["X-s-common"] || nativeSign["x-s-common"] || btoa(JSON.stringify({ x1: "4.3.3", x3: "xhs-pc-web" })),
+              "x-b3-traceid": nativeSign["X-b3-traceid"] || nativeSign["x-b3-traceid"] || nativeTraceId
+            };
+          }
           if (typeof window.mnsv2 !== "function") {
             return { error: "window.mnsv2 not available" };
           }
@@ -18,11 +38,18 @@ var X=Object.defineProperty;var M=Object.getOwnPropertyDescriptor;var F=Object.g
             payload += typeof apiData === "string" ? apiData : JSON.stringify(apiData);
           }
           var x3 = window.mnsv2(payload, "", "");
+          var xS = "XYW_" + btoa(JSON.stringify({
+            signSvn: "56",
+            signType: "x2",
+            appId: "xhs-pc-web",
+            signVersion: "1",
+            payload: x3
+          }));
           var traceId = "";
           var chars = "abcdef0123456789";
           for (var i = 0; i < 16; i++) traceId += chars.charAt(Math.floor(Math.random() * chars.length));
           return {
-            "x-s": "XYS_" + btoa(JSON.stringify({ x0: "4.3.3", x1: "xhs-pc-web", x3: x3 })),
+            "x-s": xS,
             "x-t": String(timestamp),
             "x-s-common": btoa(JSON.stringify({ x1: "4.3.3", x3: "xhs-pc-web" })),
             "x-b3-traceid": traceId
@@ -31,4 +58,436 @@ var X=Object.defineProperty;var M=Object.getOwnPropertyDescriptor;var F=Object.g
           return { error: e && e.message ? e.message : "unknown signing error" };
         }
       })()
-    `}};function z(s,t){return s[t]!==!0}function G(s,t){s[t]=!0}var k=class{constructor(t){this.plugin=t}plugin;isSyncing=!1;async syncBookmarks(){if(this.isSyncing){new g.Notice("XHS sync is already running.");return}this.isSyncing=!0;let t=new x;try{await t.initWebview();let e=this.plugin.settings.cookies||`a1=${this.plugin.settings.a1Cookie}`,n=new b(t,e),i=new S(this.plugin.app,this.plugin.settings.rootFolder),r=await n.getCurrentUser();this.plugin.settings.userId=r.userId,this.plugin.settings.userName=r.userName;let a=this.plugin.settings.syncCursors.bookmark??"",o=await n.getBookmarks(a,this.plugin.settings.syncBatchSize),T=0;for(let m of o.notes){if(!z(this.plugin.settings.syncedIds,m.noteId))continue;let h=await n.getNoteDetail(m.noteId,m.xsecToken);if(h){if(this.plugin.settings.downloadImages)for(let w=0;w<h.media.length;w++){let y=h.media[w];if(y.type!=="image")continue;let _=await(0,g.requestUrl)({url:y.url,method:"GET",throw:!1});_.status>=200&&_.status<300&&(y.localPath=await i.writeMedia(h.id,w+1,_.arrayBuffer,y.ext??"jpg"))}await i.writeNote(h),G(this.plugin.settings.syncedIds,m.noteId),T++}}this.plugin.settings.syncCursors.bookmark=o.cursor,this.plugin.settings.lastSyncAt=Date.now(),await this.plugin.saveSettings(),new g.Notice(`XHS sync complete: ${T} notes saved.`)}catch(e){let n=e instanceof Error?e.message:String(e);throw new g.Notice(`XHS sync failed: ${n}`),e}finally{t.destroy(),this.isSyncing=!1}}};var p=require("obsidian");var E=class extends p.Modal{constructor(e){super(e.app);this.plugin=e}plugin;webviewEl=null;onOpen(){this.modalEl.addClass("xhs-login-modal"),this.contentEl.empty();let e=this.contentEl.createDiv({cls:"xhs-webview-container"}),n=document.createElement("webview");n.setAttribute("src",l.web),n.setAttribute("partition","persist:xhs-vault-sync"),n.setAttribute("allowpopups","true"),e.appendChild(n),this.webviewEl=n,this.contentEl.createDiv().createEl("button",{text:"I am logged in"}).addEventListener("click",()=>{this.handleLoginComplete()})}async handleLoginComplete(){if(!this.webviewEl?.executeJavaScript){new p.Notice("Login webview is not ready.");return}let e=await this.webviewEl.executeJavaScript("document.cookie"),n=e.match(/(?:^|;\s*)a1=([^;]+)/)?.[1]??"";if(!n){new p.Notice("No a1 cookie found. Finish login first.");return}this.plugin.settings.cookies=e,this.plugin.settings.a1Cookie=n,await this.plugin.saveSettings(),new p.Notice("Xiaohongshu login saved."),this.close()}onClose(){this.contentEl.empty(),this.webviewEl=null}};var u=require("obsidian"),I=class extends u.PluginSettingTab{constructor(e,n){super(e,n);this.plugin=n}plugin;display(){let{containerEl:e}=this;e.empty(),e.createEl("h2",{text:"XHS Vault Sync"}),new u.Setting(e).setName("Auto sync").setDesc("Run bookmark sync on an interval. Minimum interval is 5 minutes.").addToggle(n=>n.setValue(this.plugin.settings.autoSyncEnabled).onChange(async i=>{this.plugin.settings.autoSyncEnabled=i,await this.plugin.saveSettings(),this.plugin.startSyncInterval()})),new u.Setting(e).setName("Sync interval minutes").setDesc("Minimum 5 minutes.").addText(n=>n.setValue(String(this.plugin.settings.syncIntervalMinutes)).onChange(async i=>{let r=Number(i);this.plugin.settings.syncIntervalMinutes=Number.isFinite(r)?Math.max(5,Math.floor(r)):10,await this.plugin.saveSettings(),this.plugin.startSyncInterval()})),new u.Setting(e).setName("Root folder").setDesc("Synced Markdown and media will be stored under this vault folder.").addText(n=>n.setPlaceholder("RedNote").setValue(this.plugin.settings.rootFolder).onChange(async i=>{this.plugin.settings.rootFolder=i.trim()||"RedNote",await this.plugin.saveSettings()})),new u.Setting(e).setName("Batch size").setDesc("Number of notes to sync per run. Keep this between 1 and 10 to reduce rate-limit risk.").addText(n=>n.setPlaceholder("5").setValue(String(this.plugin.settings.syncBatchSize)).onChange(async i=>{let r=Number(i);this.plugin.settings.syncBatchSize=Number.isFinite(r)?Math.min(10,Math.max(1,Math.floor(r))):5,await this.plugin.saveSettings()})),new u.Setting(e).setName("Download images").setDesc("Save note images into the vault instead of linking remote URLs.").addToggle(n=>n.setValue(this.plugin.settings.downloadImages).onChange(async i=>{this.plugin.settings.downloadImages=i,await this.plugin.saveSettings()}))}};var N=class extends P.Plugin{settings=f();syncEngine=null;syncIntervalId=null;async onload(){await this.loadSettings(),this.syncEngine=new k(this),this.addSettingTab(new I(this.app,this)),this.addCommand({id:"xhs-vault-sync-login",name:"Log in to Xiaohongshu",callback:()=>new E(this).open()}),this.addCommand({id:"xhs-vault-sync-now",name:"Sync bookmarks now",callback:()=>{this.syncNow()}}),this.startSyncInterval()}async loadSettings(){let t=f(),e=await this.loadData();this.settings=Object.assign(t,e,{syncCursors:{...e?.syncCursors??{}},syncedIds:{...e?.syncedIds??{}}})}async saveSettings(){await this.saveData(this.settings)}async syncNow(){if(!this.settings.a1Cookie){new P.Notice("Log in to Xiaohongshu before syncing.");return}await this.syncEngine?.syncBookmarks()}startSyncInterval(){if(this.stopSyncInterval(),!this.settings.autoSyncEnabled)return;let t=Math.max(5,this.settings.syncIntervalMinutes);this.syncIntervalId=this.registerInterval(window.setInterval(()=>{this.syncNow()},t*60*1e3))}stopSyncInterval(){this.syncIntervalId!==null&&(window.clearInterval(this.syncIntervalId),this.syncIntervalId=null)}onunload(){this.stopSyncInterval()}};
+    `}buildFetchScript(t,n,s){return`
+      (async function() {
+        try {
+          var apiPath = ${JSON.stringify(n)};
+          var apiData = ${JSON.stringify(s)};
+          var method = ${JSON.stringify(t)};
+          var headers = (${this.buildInjectScript(n,s)});
+          if (headers.error) return { error: headers.error };
+          var response = await fetch(${JSON.stringify(l.api)} + apiPath, {
+            method: method,
+            credentials: "include",
+            headers: Object.assign({}, headers, {
+              "Content-Type": "application/json"
+            }),
+            body: method === "POST" ? JSON.stringify(apiData) : undefined
+          });
+          var text = await response.text();
+          var json = null;
+          try {
+            json = text ? JSON.parse(text) : null;
+          } catch (e) {
+            json = null;
+          }
+          return { status: response.status, json: json, text: text };
+        } catch (e) {
+          return { error: e && e.message ? e.message : "unknown fetch error" };
+        }
+      })()
+    `}buildBookmarkCollectorScript(t){let n=Math.max(1,Math.min(50,Math.floor(t)));return`
+      (async function() {
+        var COLLECT_PATH = "/api/sns/web/v2/note/collect/page";
+        var MAX_ITEMS = ${JSON.stringify(n)};
+        var items = new Map();
+        var xhrPages = 0;
+        var itemKeys = new Set();
+        var cardKeys = new Set();
+
+        function sleep(ms) {
+          return new Promise(function(resolve) { setTimeout(resolve, ms); });
+        }
+
+        function unwrap(value, depth) {
+          var nextDepth = depth || 0;
+          if (nextDepth > 8 || value == null) return value;
+          if (Array.isArray(value)) return value.map(function(item) { return unwrap(item, nextDepth + 1); });
+          if (typeof value !== "object") return value;
+          if (Object.prototype.hasOwnProperty.call(value, "_rawValue")) return unwrap(value._rawValue, nextDepth + 1);
+          if (Object.prototype.hasOwnProperty.call(value, "__v_raw")) return unwrap(value.__v_raw, nextDepth + 1);
+          if (Object.prototype.hasOwnProperty.call(value, "value") && Object.keys(value).length <= 4) {
+            return unwrap(value.value, nextDepth + 1);
+          }
+          return value;
+        }
+
+        function pick(values) {
+          for (var index = 0; index < values.length; index++) {
+            var value = values[index];
+            if (value == null) continue;
+            if (typeof value === "string" && value.trim() === "") continue;
+            return value;
+          }
+          return "";
+        }
+
+        function add(raw, source) {
+          var item = unwrap(raw) || {};
+          var card = unwrap(item.noteCard) || unwrap(item.note_card) || item;
+          var user = unwrap(card.user) || unwrap(item.user) || {};
+          var cover = unwrap(card.cover) || unwrap(item.cover) || {};
+          var imageList = unwrap(card.imageList || card.image_list || card.images || item.imageList || item.image_list || item.images) || [];
+          var firstImage = Array.isArray(imageList) ? unwrap(imageList[0]) || {} : {};
+          Object.keys(item).slice(0, 40).forEach(function(key) { itemKeys.add(key); });
+          Object.keys(card).slice(0, 40).forEach(function(key) { cardKeys.add(key); });
+          var noteId = pick([item.noteId, item.note_id, item.id, card.noteId, card.note_id]);
+          if (!noteId) return;
+          var xsecToken = pick([item.xsecToken, item.xsec_token, card.xsecToken, card.xsec_token]);
+          var coverUrl = pick([
+            cover && cover.url,
+            cover && cover.default,
+            cover && cover.urlDefault,
+            cover && cover.url_default,
+            cover && cover.info_list && cover.info_list[0] && cover.info_list[0].url,
+            cover && cover.infoList && cover.infoList[0] && cover.infoList[0].url,
+            firstImage && firstImage.urlDefault,
+            firstImage && firstImage.url_default,
+            firstImage && firstImage.url,
+            firstImage && firstImage.info_list && firstImage.info_list[0] && firstImage.info_list[0].url,
+            firstImage && firstImage.infoList && firstImage.infoList[0] && firstImage.infoList[0].url
+          ]);
+          var current = items.get(String(noteId)) || { noteId: String(noteId), xsecToken: "", title: "", author: "", coverUrl: "", noteType: "", sources: [] };
+          if (xsecToken) current.xsecToken = String(xsecToken);
+          current.title = current.title || String(pick([card.displayTitle, card.display_title, item.displayTitle, item.display_title, card.title, item.title]) || "");
+          current.author = current.author || String(pick([user.nickname, user.nickName, user.nick_name, user.name]) || "");
+          current.coverUrl = current.coverUrl || String(coverUrl || "");
+          current.noteType = current.noteType || String(pick([card.noteType, card.note_type, item.noteType, item.note_type, card.type, item.type]) || (Array.isArray(imageList) && imageList.length ? "normal" : ""));
+          if (current.sources.indexOf(source) === -1) current.sources.push(source);
+          items.set(String(noteId), current);
+        }
+
+        function addCollection(rawCollection, source) {
+          var collection = unwrap(rawCollection);
+          var list = [];
+          if (Array.isArray(collection)) list = collection;
+          else if (collection && Array.isArray(collection.items)) list = collection.items;
+          else if (collection && Array.isArray(collection.noteList)) list = collection.noteList;
+          else if (collection && Array.isArray(collection.list)) list = collection.list;
+          else if (collection && Array.isArray(collection.notes)) list = collection.notes;
+          list.forEach(function(item) { add(item, source); });
+        }
+
+        function readInitialState() {
+          var state = unwrap(window.__INITIAL_STATE__);
+          var userState = unwrap(state && state.user) || {};
+          var notesCollection = unwrap(userState.notes);
+          if (notesCollection) addCollection(notesCollection[1], "ssr");
+        }
+
+        function scanDom() {
+          Array.from(document.querySelectorAll('a[href*="/explore/"]')).forEach(function(anchor) {
+            try {
+              var url = new URL(anchor.getAttribute("href") || anchor.href, window.location.origin);
+              var match = url.pathname.match(/\\/explore\\/([^/?#]+)/);
+              if (!match) return;
+              add({ note_id: decodeURIComponent(match[1]), xsec_token: url.searchParams.get("xsec_token") || "" }, "dom");
+            } catch (error) {
+              return;
+            }
+          });
+        }
+
+        function installXhrHook() {
+          if (window.__xhsVaultSyncCollectHook) return;
+          window.__xhsVaultSyncCollectHook = true;
+          var originalOpen = XMLHttpRequest.prototype.open;
+          var originalSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.open = function(method, url) {
+            this.__xhsVaultSyncUrl = url ? String(url) : "";
+            return originalOpen.apply(this, arguments);
+          };
+          XMLHttpRequest.prototype.send = function() {
+            var xhr = this;
+            var url = xhr.__xhsVaultSyncUrl || "";
+            if (url.indexOf(COLLECT_PATH) !== -1) {
+              xhr.addEventListener("load", function() {
+                try {
+                  var payload = JSON.parse(xhr.responseText || "{}");
+                  var data = unwrap(payload.data) || {};
+                  var notes = Array.isArray(data.notes) ? data.notes : Array.isArray(data.note_list) ? data.note_list : [];
+                  notes.forEach(function(item) { add(item, "xhr"); });
+                  xhrPages += 1;
+                } catch (error) {
+                  return;
+                }
+              }, { once: true });
+            }
+            return originalSend.apply(this, arguments);
+          };
+        }
+
+        function clickCollectTab() {
+          var candidates = Array.from(document.querySelectorAll(".reds-tab-item, [role='tab'], button, div"));
+          var target = candidates.find(function(element) {
+            return element && element.textContent && element.textContent.trim() === "\u6536\u85CF";
+          });
+          if (target) target.click();
+        }
+
+        installXhrHook();
+        readInitialState();
+        scanDom();
+        clickCollectTab();
+        await sleep(2500);
+        readInitialState();
+        scanDom();
+
+        var staleRounds = 0;
+        var previousCount = items.size;
+        for (var index = 0; index < 12 && items.size < MAX_ITEMS; index++) {
+          window.scrollBy(0, Math.max(600, Math.floor(window.innerHeight * 0.85)));
+          await sleep(1600);
+          readInitialState();
+          scanDom();
+          if (items.size === previousCount) staleRounds += 1;
+          else staleRounds = 0;
+          previousCount = items.size;
+          if (staleRounds >= 4) break;
+        }
+
+        var orderedItems = Array.from(items.values()).sort(function(a, b) {
+          return Number(Boolean(b.xsecToken)) - Number(Boolean(a.xsecToken));
+        });
+        var notes = orderedItems.slice(0, MAX_ITEMS).map(function(item) {
+          return {
+            noteId: item.noteId,
+            xsecToken: item.xsecToken || "",
+            title: item.title || "",
+            author: item.author || "",
+            coverUrl: item.coverUrl || "",
+            noteType: item.noteType || ""
+          };
+        });
+        var sourceCounts = { ssr: 0, xhr: 0, dom: 0 };
+        Array.from(items.values()).forEach(function(item) {
+          (item.sources || []).forEach(function(source) {
+            if (sourceCounts[source] != null) sourceCounts[source] += 1;
+          });
+        });
+
+        return {
+          notes: notes,
+          cursor: "",
+          hasMore: false,
+          debug: {
+            topLevelKeys: ["page-collector"],
+            dataKeys: ["ssr", "xhr", "dom"],
+            noteCount: notes.length,
+            hasMore: false,
+            cursorPresent: false,
+            codeType: "page-collector",
+            codeValue: String(xhrPages),
+            messagePresent: false,
+            messagePreview: "sources=page",
+            tokenCount: orderedItems.filter(function(item) { return item.xsecToken; }).length,
+            sourceSummary: "ssr=" + sourceCounts.ssr + ",xhr=" + sourceCounts.xhr + ",dom=" + sourceCounts.dom,
+            itemKeySummary: Array.from(itemKeys).sort().slice(0, 30).join(","),
+            cardKeySummary: Array.from(cardKeys).sort().slice(0, 30).join(",")
+          }
+        };
+      })()
+    `}buildNoteDetailCollectorScript(t){let n=t.noteId,s=t.xsecToken;return`
+      (function() {
+        var NOTE_ID = ${JSON.stringify(n)};
+        var FALLBACK = ${JSON.stringify(t)};
+        var XHS_WEB = ${JSON.stringify(l.web)};
+
+        function unwrap(value, depth) {
+          var nextDepth = depth || 0;
+          if (nextDepth > 10 || value == null) return value;
+          if (Array.isArray(value)) return value.map(function(item) { return unwrap(item, nextDepth + 1); });
+          if (typeof value !== "object") return value;
+          if (Object.prototype.hasOwnProperty.call(value, "_rawValue")) return unwrap(value._rawValue, nextDepth + 1);
+          if (Object.prototype.hasOwnProperty.call(value, "__v_raw")) return unwrap(value.__v_raw, nextDepth + 1);
+          if (Object.prototype.hasOwnProperty.call(value, "value") && Object.keys(value).length <= 4) {
+            return unwrap(value.value, nextDepth + 1);
+          }
+          return value;
+        }
+
+        function pick(values) {
+          for (var index = 0; index < values.length; index++) {
+            var value = values[index];
+            if (value == null) continue;
+            if (Array.isArray(value)) value = value.filter(Boolean).join("\\n");
+            if (typeof value !== "string" && typeof value !== "number") continue;
+            var text = String(value).replace(/\\r\\n/g, "\\n").trim();
+            if (text) return text;
+          }
+          return "";
+        }
+
+        function normalizeText(value) {
+          return String(value || "")
+            .replace(/\\u200b/g, "")
+            .replace(/[ \\t]+\\n/g, "\\n")
+            .replace(/\\n{3,}/g, "\\n\\n")
+            .trim();
+        }
+
+        function meta(selector) {
+          var element = document.querySelector(selector);
+          return element ? element.getAttribute("content") || "" : "";
+        }
+
+        function textOf(selector) {
+          var element = document.querySelector(selector);
+          if (!element) return "";
+          return normalizeText(element.innerText || element.textContent || "");
+        }
+
+        function findByNoteId(root) {
+          var seen = [];
+          var queue = [unwrap(root)];
+          while (queue.length) {
+            var current = unwrap(queue.shift());
+            if (!current || typeof current !== "object") continue;
+            if (seen.indexOf(current) !== -1) continue;
+            seen.push(current);
+            var card = unwrap(current.noteCard) || unwrap(current.note_card) || current;
+            var id = pick([current.noteId, current.note_id, current.id, card.noteId, card.note_id, card.id]);
+            if (id === NOTE_ID) return card;
+            Object.keys(current).slice(0, 80).forEach(function(key) {
+              var value = current[key];
+              if (value && typeof value === "object") queue.push(value);
+            });
+          }
+          return null;
+        }
+
+        function collectImages(card) {
+          var images = [];
+          function add(url) {
+            if (!url) return;
+            var text = String(url);
+            if (!/^https?:\\/\\//.test(text)) return;
+            if (images.indexOf(text) === -1) images.push(text);
+          }
+
+          var list = unwrap(card && (card.imageList || card.image_list || card.images || card.imageInfos || card.image_infos)) || [];
+          if (Array.isArray(list)) {
+            list.forEach(function(image) {
+              image = unwrap(image) || {};
+              add(image.urlDefault || image.url_default || image.url || image.src);
+              var info = unwrap(image.infoList || image.info_list) || [];
+              if (Array.isArray(info)) info.forEach(function(entry) { add(entry && entry.url); });
+            });
+          }
+          add(FALLBACK.coverUrl);
+          add(meta('meta[property="og:image"]'));
+          Array.from(document.querySelectorAll('img[src]')).slice(0, 12).forEach(function(image) {
+            var src = image.getAttribute("src") || "";
+            if (/xhscdn|xiaohongshu|sns-webpic/.test(src)) add(src);
+          });
+
+          return images.slice(0, 20).map(function(url) {
+            return { type: "image", url: url, ext: "jpg" };
+          });
+        }
+
+        function collectComments(card) {
+          var comments = [];
+          function add(author, content, createdAt, likes) {
+            var text = normalizeText(content);
+            if (!text) return;
+            if (comments.some(function(comment) { return comment.author === String(author || "") && comment.content === text; })) return;
+            comments.push({
+              author: String(author || ""),
+              content: text,
+              createdAt: createdAt ? String(createdAt) : undefined,
+              likes: likes == null ? undefined : String(likes)
+            });
+          }
+
+          var list = unwrap(card && (
+            card.commentList ||
+            card.comment_list ||
+            card.comments ||
+            card.commentInfo && card.commentInfo.comments ||
+            card.comment_info && card.comment_info.comments
+          )) || [];
+          if (Array.isArray(list)) {
+            list.forEach(function(rawComment) {
+              var comment = unwrap(rawComment) || {};
+              var user = unwrap(comment.user || comment.author) || {};
+              add(
+                pick([user.nickname, user.nickName, user.nick_name, user.name, comment.nickname]),
+                pick([comment.content, comment.text, comment.commentContent, comment.comment_content, comment.desc]),
+                pick([comment.createTime, comment.create_time, comment.time]),
+                pick([comment.likeCount, comment.like_count, comment.likes])
+              );
+            });
+          }
+
+          Array.from(document.querySelectorAll(".comment-item, .comment-inner-container, .parent-comment")).slice(0, 30).forEach(function(element) {
+            var author = "";
+            var authorElement = element.querySelector(".author, .nickname, .user-name, [class*=name]");
+            if (authorElement) author = normalizeText(authorElement.textContent || "");
+            var contentElement = element.querySelector(".content, .comment-content, .note-text, [class*=content]");
+            add(author, contentElement ? contentElement.textContent || "" : element.textContent || "");
+          });
+
+          return comments.slice(0, 50);
+        }
+
+        var initialState = unwrap(window.__INITIAL_STATE__);
+        var card = findByNoteId(initialState) || {};
+        var user = unwrap(card.user) || {};
+        var title = pick([
+          card.displayTitle,
+          card.display_title,
+          card.title,
+          textOf("#detail-title"),
+          textOf(".title"),
+          meta('meta[property="og:title"]'),
+          FALLBACK.title
+        ]);
+        var content = normalizeText(pick([
+          card.desc,
+          card.description,
+          card.content,
+          card.noteContent,
+          card.note_content,
+          card.text,
+          card.body,
+          textOf("#detail-desc"),
+          textOf(".note-text"),
+          textOf(".note-content .desc"),
+          textOf(".desc"),
+          meta('meta[name="description"]'),
+          meta('meta[property="og:description"]')
+        ]));
+        var author = pick([
+          user.nickname,
+          user.nickName,
+          user.nick_name,
+          user.name,
+          textOf(".author"),
+          FALLBACK.author
+        ]);
+        var tagList = unwrap(card.tagList || card.tag_list || card.tags) || [];
+        var tags = ["xhs", "xhs-bookmark"];
+        if (Array.isArray(tagList)) {
+          tagList.forEach(function(tag) {
+            var name = pick([tag && tag.name, tag && tag.tagName, tag]);
+            if (name && tags.indexOf(name) === -1) tags.push(name);
+          });
+        }
+
+        return {
+          id: NOTE_ID,
+          title: title || FALLBACK.title || ("XHS Bookmark " + NOTE_ID.slice(0, 8)),
+          author: author || "",
+          url: FALLBACK.xsecToken
+            ? XHS_WEB + "/explore/" + NOTE_ID + "?xsec_token=" + encodeURIComponent(FALLBACK.xsecToken)
+            : XHS_WEB + "/explore/" + NOTE_ID,
+          tags: tags,
+          content: content,
+          media: collectImages(card),
+          comments: collectComments(card)
+        };
+      })()
+    `}};function Ae(e){return Ne(e?.title)&&!e?.content?.trim()}function Ne(e){return e?.trim().toLowerCase()==="sorry, this page isn't available right now."}function Le(e,t){return e[t]!==!0}function Pe(e,t){e[t]=!0}var $=class{constructor(t){this.plugin=t}plugin;isSyncing=!1;async syncBookmarks(){if(this.isSyncing){new k.Notice("XHS sync is already running.");return}this.isSyncing=!0;let t=new X;try{await this.plugin.updateSyncStatus({phase:"opening_xhs",message:"\u6B63\u5728\u6253\u5F00\u5C0F\u7EA2\u4E66\u9875\u9762",startedAt:Date.now(),discoveredCount:0,savedCount:0,skippedCount:0}),await t.initWebview();let n=`a1=${this.plugin.settings.a1Cookie}`,s=await O(n);this.plugin.settings.cookies="";let r=new P(t,s),i=new N(this.plugin.app,this.plugin.settings.rootFolder),o=await r.getCurrentUser();this.plugin.settings.userId=o.userId,this.plugin.settings.userName=o.userName,await this.plugin.updateSyncStatus({phase:"collecting",message:"\u6B63\u5728\u8BFB\u53D6\u6536\u85CF",discoveredCount:0,savedCount:0,skippedCount:0});let c=Math.max(30,this.plugin.settings.syncBatchSize),y=await je(r,o.userId,this.plugin.settings.syncCursors.bookmark??"",c),d=await De(t,o.userId,c),a=Ue(y,d);this.plugin.settings.lastBookmarkDebug=a.debug;let v=0,f=0,F=0,Y=!1,Z=Math.min(a.notes.length,this.plugin.settings.syncBatchSize);await this.plugin.updateSyncStatus({phase:"saving",message:"\u6B63\u5728\u4FDD\u5B58",discoveredCount:a.notes.length,savedCount:v,skippedCount:f,currentIndex:F,totalCount:Z});for(let w of a.notes){if(!Le(this.plugin.settings.syncedIds,w.noteId)){f++;continue}F++,await this.plugin.updateSyncStatus({phase:"saving",message:"\u6B63\u5728\u4FDD\u5B58",discoveredCount:a.notes.length,savedCount:v,skippedCount:f,currentIndex:F,totalCount:Z});let E=await r.getNoteDetail(w.noteId,w.xsecToken),V=Xe(E)?await t.collectNoteDetail(w):null,Q=q(V)?null:V;if(!E&&q(V)){f++;continue}if(Re(w)&&!E&&!Q){f++;continue}let g=$e(E,Q)??Fe(w);if(q(g)){f++;continue}if(g.comments=G(g.comments),this.plugin.settings.downloadImages)for(let _=0;_<g.media.length;_++){let I=g.media[_];if(I.type!=="image")continue;let J=await(0,k.requestUrl)({url:I.url,method:"GET",throw:!1});J.status>=200&&J.status<300&&(I.localPath=await i.writeMedia(g.id,_+1,J.arrayBuffer,I.ext??"jpg"))}let ee=this.plugin.settings.nextSyncIndex??1;if(g.syncIndex=ee,g.syncedAt=new Date().toISOString(),await i.writeNote(g),this.plugin.settings.nextSyncIndex=ee+1,Pe(this.plugin.settings.syncedIds,w.noteId),v++,v>=this.plugin.settings.syncBatchSize){Y=!0;break}}Y||(this.plugin.settings.syncCursors.bookmark=a.cursor),this.plugin.settings.lastSyncAt=Date.now(),this.plugin.settings.lastSyncError="",await this.plugin.updateSyncStatus({phase:"complete",message:`\u540C\u6B65\u5B8C\u6210\uFF0C\u65B0\u589E ${v} \u6761\uFF0C\u8DF3\u8FC7 ${f} \u6761`,discoveredCount:a.notes.length,savedCount:v,skippedCount:f,lastError:""}),await this.plugin.saveSettings(),new k.Notice(`XHS sync complete: ${v} notes saved.`)}catch(n){let s=n instanceof Error?n.message:String(n),r=u(He(s));throw this.plugin.settings.lastSyncError=r,await this.plugin.updateSyncStatus({phase:"failed",message:r,lastError:r,discoveredCount:this.plugin.settings.syncStatusSnapshot?.discoveredCount??0,savedCount:this.plugin.settings.syncStatusSnapshot?.savedCount??0,skippedCount:this.plugin.settings.syncStatusSnapshot?.skippedCount??0}),new k.Notice(`XHS sync failed: ${r}`),n}finally{t.destroy(),this.isSyncing=!1}}};function Oe(e){return!!e?.content?.trim()}function Xe(e){return!Oe(e)||e.media.length===0||!Me(e.comments)}function $e(e,t){return e?t?{...e,...t,title:t.title||e.title,author:t.author||e.author,tags:t.tags.length?t.tags:e.tags,content:t.content||e.content,media:t.media.length?t.media:e.media,comments:Be(e.comments,t.comments)}:e:t}function re(e){return e.author.trim()==="\u95EE\u4E00\u95EE"&&!!e.content.trim()}function Me(e){return!!e?.some(re)}function G(e){return(e??[]).filter(re)}function Be(e,t){let n=G(t);return n.length?n:G(e)}function Ue(e,t){let n=new Map(t.notes.map(i=>[i.noteId,i])),s=e.notes.map(i=>{let o=n.get(i.noteId);return o?{...o,...i,xsecToken:i.xsecToken||o.xsecToken,title:o.title||i.title,author:o.author||i.author,coverUrl:o.coverUrl||i.coverUrl,noteType:o.noteType||i.noteType}:i}),r=new Set(e.notes.map(i=>i.noteId));for(let i of t.notes)r.has(i.noteId)||s.push(i);return{notes:s,cursor:e.cursor||t.cursor,hasMore:e.hasMore||t.hasMore,debug:{...e.debug,noteCount:s.length,sourceSummary:[e.debug.sourceSummary,t.debug.sourceSummary,`api=${e.notes.length}`,`page=${t.notes.length}`].filter(Boolean).join(","),itemKeySummary:t.debug.itemKeySummary||e.debug.itemKeySummary,cardKeySummary:t.debug.cardKeySummary||e.debug.cardKeySummary}}}async function De(e,t,n){try{return await e.collectBookmarks(t,n)}catch(s){let r=s instanceof Error?s.message:String(s);return{notes:[],cursor:"",hasMore:!1,debug:{topLevelKeys:["page-collector"],dataKeys:[],noteCount:0,hasMore:!1,cursorPresent:!1,codeType:"page-collector-error",messagePresent:!0,messagePreview:u(r)}}}}async function je(e,t,n,s){try{return await e.getBookmarks(t,n,s)}catch(r){let i=r instanceof Error?r.message:String(r);return{notes:[],cursor:"",hasMore:!1,debug:{topLevelKeys:["api-collector"],dataKeys:[],noteCount:0,hasMore:!1,cursorPresent:!1,codeType:"api-collector-error",messagePresent:!0,messagePreview:u(i)}}}}function He(e){return e.includes("Not logged in")?"\u767B\u5F55\u5DF2\u5931\u6548\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55\u5C0F\u7EA2\u4E66":e.includes("Webview load timeout")?"\u5C0F\u7EA2\u4E66\u9875\u9762\u52A0\u8F7D\u8D85\u65F6\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5":e.includes("HTTP 406")?"\u5C0F\u7EA2\u4E66\u62D2\u7EDD\u4E86\u5F53\u524D\u8BF7\u6C42\uFF0C\u8BF7\u91CD\u65B0\u767B\u5F55\u540E\u518D\u8BD5":e.includes("Account abnormal")||e.includes("300011")?"\u6536\u85CF\u63A5\u53E3\u88AB\u5C0F\u7EA2\u4E66\u62D2\u7EDD\uFF0C\u5DF2\u5C1D\u8BD5\u4F7F\u7528\u9875\u9762\u91C7\u96C6":e}function Re(e){return se(e.title)}function q(e){return se(e?.title)&&!e?.content?.trim()}function se(e){return e?.trim().toLowerCase()==="sorry, this page isn't available right now."}function Fe(e){let t=e.xsecToken?`https://www.xiaohongshu.com/explore/${e.noteId}?xsec_token=${encodeURIComponent(e.xsecToken)}`:`https://www.xiaohongshu.com/explore/${e.noteId}`;return{id:e.noteId,title:e.title||`XHS Bookmark ${e.noteId.slice(0,8)}`,author:e.author||"",url:t,tags:["xhs","xhs-bookmark"],content:[e.noteType?`\u7C7B\u578B\uFF1A${e.noteType}`:void 0,"\u5DF2\u4ECE\u5C0F\u7EA2\u4E66\u6536\u85CF\u5217\u8868\u540C\u6B65\u3002\u5F53\u524D Web \u8BE6\u60C5\u63A5\u53E3\u672A\u8FD4\u56DE\u5B8C\u6574\u6B63\u6587\uFF0C\u56E0\u6B64\u672C\u7B14\u8BB0\u4FDD\u7559\u6536\u85CF\u9875\u53EF\u89C1\u4FE1\u606F\u4E0E\u539F\u59CB\u94FE\u63A5\u3002"].filter(Boolean).join(`
+
+`),media:e.coverUrl?[{type:"image",url:e.coverUrl,ext:"jpg"}]:[]}}var b=require("obsidian");var M=class extends b.Modal{constructor(n){super(n.app);this.plugin=n}plugin;webviewEl=null;onOpen(){this.modalEl.addClass("xhs-login-modal"),this.contentEl.empty();let n=this.contentEl.createDiv({cls:"xhs-webview-container"}),s=document.createElement("webview");s.setAttribute("src",l.web),s.setAttribute("partition",x),s.setAttribute("allowpopups","true"),n.appendChild(s),this.webviewEl=s,this.contentEl.createDiv().createEl("button",{text:"I am logged in"}).addEventListener("click",()=>{this.handleLoginComplete()})}async handleLoginComplete(){if(!this.webviewEl?.executeJavaScript){new b.Notice("\u767B\u5F55\u7A97\u53E3\u5C1A\u672A\u51C6\u5907\u597D\u3002");return}let n=await this.webviewEl.executeJavaScript("document.cookie"),r=(await O(n)).match(/(?:^|;\s*)a1=([^;]+)/)?.[1]??"";if(!r){new b.Notice("\u672A\u627E\u5230 a1 Cookie\uFF0C\u8BF7\u5148\u5B8C\u6210\u767B\u5F55\u3002");return}this.plugin.settings.cookies="",this.plugin.settings.a1Cookie=r,await this.plugin.saveSettings(),await this.plugin.updateSyncStatus({phase:"idle",message:"\u767B\u5F55\u6210\u529F\uFF0C\u53EF\u4EE5\u5F00\u59CB\u540C\u6B65",discoveredCount:0,savedCount:0,skippedCount:0}),new b.Notice("\u5C0F\u7EA2\u4E66\u767B\u5F55\u5DF2\u4FDD\u5B58\u3002\u4E0B\u4E00\u6B65\u6267\u884C\u7ACB\u5373\u540C\u6B65\u4E66\u7B7E\u3002"),this.close()}onClose(){this.contentEl.empty(),this.webviewEl=null}};var U=require("obsidian"),B=class extends U.Modal{constructor(n){super(n.app);this.plugin=n}plugin;hasMarkedSeen=!1;onOpen(){let{contentEl:n}=this;this.markOnboardingSeen(),n.empty(),n.createEl("h2",{text:"\u5F00\u59CB\u540C\u6B65\u5C0F\u7EA2\u4E66\u6536\u85CF"});let s=n.createEl("ol");s.createEl("li",{text:"\u70B9\u51FB\u201C\u767B\u5F55\u5C0F\u7EA2\u4E66\u201D\uFF0C\u5728\u5F39\u7A97\u4E2D\u5B8C\u6210\u767B\u5F55\u3002"}),s.createEl("li",{text:"\u5728\u767B\u5F55\u5F39\u7A97\u70B9\u51FB\u5B8C\u6210\u767B\u5F55\u6309\u94AE\uFF08I am logged in\uFF09\u3002"}),s.createEl("li",{text:"\u70B9\u51FB\u201C\u7ACB\u5373\u540C\u6B65\u201D\uFF0C\u63D2\u4EF6\u4F1A\u628A\u6536\u85CF\u4FDD\u5B58\u5230 RedNote\u3002"}),s.createEl("li",{text:"\u540C\u6B65\u8FC7\u7A0B\u4E2D\u53EF\u4EE5\u5728\u72B6\u6001\u680F\u6216\u201C\u67E5\u770B\u72B6\u6001\u201D\u91CC\u770B\u8FDB\u5EA6\u3002"}),new U.Setting(n).addButton(r=>r.setButtonText("\u767B\u5F55\u5C0F\u7EA2\u4E66").setCta().onClick(async()=>{await this.markOnboardingSeen(),this.close(),this.plugin.openLoginModal()})).addButton(r=>r.setButtonText("\u7A0D\u540E\u518D\u8BF4").onClick(async()=>{await this.markOnboardingSeen(),this.close()}))}async markOnboardingSeen(){this.hasMarkedSeen||this.plugin.settings.hasSeenOnboarding||(this.hasMarkedSeen=!0,this.plugin.settings.hasSeenOnboarding=!0,await this.plugin.saveSettings())}onClose(){this.contentEl.empty()}};var h=require("obsidian"),D=class extends h.PluginSettingTab{constructor(n,s){super(n,s);this.plugin=s}plugin;display(){let{containerEl:n}=this;n.empty(),n.createEl("h2",{text:"XHS Vault Sync"}),n.createEl("h3",{text:"\u5F53\u524D\u72B6\u6001"}),n.createEl("p",{text:this.plugin.settings.a1Cookie?"\u767B\u5F55\u72B6\u6001\uFF1A\u5DF2\u4FDD\u5B58\u767B\u5F55\u6001":"\u767B\u5F55\u72B6\u6001\uFF1A\u672A\u767B\u5F55"}),n.createEl("p",{text:this.plugin.settings.lastSyncAt?`\u4E0A\u6B21\u540C\u6B65\uFF1A${new Date(this.plugin.settings.lastSyncAt).toLocaleString()}`:"\u4E0A\u6B21\u540C\u6B65\uFF1A\u6682\u65E0"}),n.createEl("p",{text:`\u5DF2\u540C\u6B65\uFF1A${Object.keys(this.plugin.settings.syncedIds).length} \u6761`});let s=!!this.plugin.settings.a1Cookie;new h.Setting(n).setName("\u64CD\u4F5C").setDesc(s?"\u767B\u5F55\u540E\u5373\u53EF\u540C\u6B65\u5C0F\u7EA2\u4E66\u6536\u85CF\u3002":"\u8BF7\u5148\u767B\u5F55\u5C0F\u7EA2\u4E66\uFF0C\u518D\u6267\u884C\u540C\u6B65\u3002").addButton(r=>r.setButtonText("\u767B\u5F55\u5C0F\u7EA2\u4E66").onClick(()=>{this.plugin.openLoginModal()})).addButton(r=>r.setButtonText("\u7ACB\u5373\u540C\u6B65").setCta().setDisabled(!s).onClick(()=>{this.plugin.syncNow()})).addButton(r=>r.setButtonText("\u67E5\u770B\u72B6\u6001").onClick(()=>{this.plugin.openStatusModal()})),new h.Setting(n).setName("\u81EA\u52A8\u540C\u6B65").setDesc("\u6309\u56FA\u5B9A\u95F4\u9694\u540C\u6B65\u6536\u85CF\uFF0C\u6700\u5C0F\u95F4\u9694\u4E3A 5 \u5206\u949F\u3002").addToggle(r=>r.setValue(this.plugin.settings.autoSyncEnabled).onChange(async i=>{this.plugin.settings.autoSyncEnabled=i,await this.plugin.saveSettings(),this.plugin.startSyncInterval()})),new h.Setting(n).setName("\u540C\u6B65\u95F4\u9694\uFF08\u5206\u949F\uFF09").setDesc("\u6700\u5C0F 5 \u5206\u949F\u3002").addText(r=>r.setValue(String(this.plugin.settings.syncIntervalMinutes)).onChange(async i=>{let o=Number(i);this.plugin.settings.syncIntervalMinutes=Number.isFinite(o)?Math.max(5,Math.floor(o)):10,await this.plugin.saveSettings(),this.plugin.startSyncInterval()})),new h.Setting(n).setName("\u4FDD\u5B58\u76EE\u5F55").setDesc("\u540C\u6B65\u7684 Markdown \u548C\u5A92\u4F53\u6587\u4EF6\u4F1A\u4FDD\u5B58\u5230\u6B64\u76EE\u5F55\u4E0B\u3002").addText(r=>r.setPlaceholder("RedNote").setValue(this.plugin.settings.rootFolder).onChange(async i=>{this.plugin.settings.rootFolder=i.trim()||"RedNote",await this.plugin.saveSettings()})),new h.Setting(n).setName("\u5355\u6B21\u540C\u6B65\u6570\u91CF").setDesc("\u6BCF\u6B21\u540C\u6B65\u7684\u7B14\u8BB0\u6570\u91CF\uFF0C\u8303\u56F4\u4E3A 1 \u5230 10\uFF0C\u964D\u4F4E\u89E6\u53D1\u9650\u6D41\u7684\u98CE\u9669\u3002").addText(r=>r.setPlaceholder("5").setValue(String(this.plugin.settings.syncBatchSize)).onChange(async i=>{let o=Number(i);this.plugin.settings.syncBatchSize=Number.isFinite(o)?Math.min(10,Math.max(1,Math.floor(o))):5,await this.plugin.saveSettings()})),new h.Setting(n).setName("\u4E0B\u8F7D\u56FE\u7247").setDesc("\u5C06\u7B14\u8BB0\u56FE\u7247\u4FDD\u5B58\u5230\u5E93\u4E2D\uFF0C\u800C\u4E0D\u662F\u5F15\u7528\u8FDC\u7A0B\u94FE\u63A5\u3002").addToggle(r=>r.setValue(this.plugin.settings.downloadImages).onChange(async i=>{this.plugin.settings.downloadImages=i,await this.plugin.saveSettings()}))}};var ie=require("obsidian");var Ve=/\s*\b(raw_response|rawResponse|originalResponse|原始响应)\b[\s\S]*$/i;function Je(e,t){return e?new Date(e).toLocaleString():t}function Ke(e){return u(e).replace(Ve,"[response redacted]").trim()}var j=class extends ie.Modal{constructor(n){super(n.app);this.plugin=n}plugin;onOpen(){let{contentEl:n}=this,{settings:s}=this.plugin,r=s.syncStatusSnapshot,i=Object.keys(s.syncedIds??{}).length,o=s.lastBookmarkDebug;n.empty(),n.createEl("h2",{text:"XHS Vault Sync \u72B6\u6001"}),n.createEl("p",{text:C(r)}),n.createEl("p",{text:`\u4E0A\u6B21\u540C\u6B65\uFF1A${Je(s.lastSyncAt,"\u6682\u65E0")}`}),n.createEl("p",{text:`\u5DF2\u540C\u6B65\uFF1A${i} \u6761`}),n.createEl("p",{text:`\u4FDD\u5B58\u76EE\u5F55\uFF1A${s.rootFolder}`}),n.createEl("h3",{text:"\u6700\u8FD1\u91C7\u96C6\u6458\u8981"}),o?(n.createEl("p",{text:`\u5019\u9009\uFF1A${o.noteCount} \u6761`}),n.createEl("p",{text:`\u6765\u6E90\uFF1A${o.sourceSummary||"\u65E0"}`}),n.createEl("p",{text:`\u5E26\u8BBF\u95EE\u4EE4\u724C\uFF1A${o.tokenCount??0} \u6761`})):n.createEl("p",{text:"\u6682\u65E0\u91C7\u96C6\u6458\u8981"}),n.createEl("h3",{text:"\u6700\u8FD1\u65E5\u5FD7"});let c=n.createEl("ul"),y=[...s.syncLog??[]].slice(-10).reverse();if(y.length===0){c.createEl("li",{text:"\u6682\u65E0\u65E5\u5FD7"});return}for(let d of y)c.createEl("li",{text:`${new Date(d.time).toLocaleTimeString()} ${Ke(d.message)}`})}onClose(){this.contentEl.empty()}};var H=class extends R.Plugin{settings=T();syncEngine=null;syncIntervalId=null;statusBarEl=null;isSyncing=!1;isUnloaded=!1;async onload(){this.isUnloaded=!1,await this.loadSettings(),this.syncEngine=new $(this),this.addSettingTab(new D(this.app,this)),this.statusBarEl=this.addStatusBarItem();let t=Date.now();await this.updateSyncStatus(this.settings.a1Cookie?S(t):{...S(t),phase:"not_logged_in",message:"\u672A\u767B\u5F55"},{recordLog:!1}),this.addCommand({id:"xhs-vault-sync-login",name:"Log in to Xiaohongshu",callback:()=>this.openLoginModal()}),this.addCommand({id:"xhs-vault-sync-now",name:"Sync bookmarks now",callback:()=>{this.syncNow()}}),this.addCommand({id:"xhs-vault-sync-status",name:"Show sync status",callback:()=>this.openStatusModal()}),this.startSyncInterval(),this.openOnboardingModalAfterDelay()}async loadSettings(){let t=T(),n=await this.loadData();this.settings=Object.assign(t,n,{cookies:"",syncCursors:{...n?.syncCursors??{}},syncedIds:{...n?.syncedIds??{}},syncStatusSnapshot:{...t.syncStatusSnapshot,...n?.syncStatusSnapshot??{},message:u(n?.syncStatusSnapshot?.message??t.syncStatusSnapshot.message),lastError:n?.syncStatusSnapshot?.lastError===void 0?void 0:u(n.syncStatusSnapshot.lastError)},syncLog:[...n?.syncLog??[]].map(s=>({...s,message:u(s.message)})),lastSyncError:u(n?.lastSyncError??t.lastSyncError),hasSeenOnboarding:n?.hasSeenOnboarding??t.hasSeenOnboarding})}async saveSettings(){await this.saveData(this.settings)}openLoginModal(){new M(this).open()}openStatusModal(){new j(this).open()}openOnboardingModalAfterDelay(){this.settings.hasSeenOnboarding||typeof window>"u"||window.setTimeout(()=>{this.isUnloaded||this.settings.hasSeenOnboarding||new B(this).open()},500)}async updateSyncStatus(t,n={}){if(this.isUnloaded)return;let s=Date.now(),r=this.settings.syncStatusSnapshot??S(s),i=u(t.message),o=t.lastError===void 0?void 0:u(t.lastError),c={...r,...t,message:i,updatedAt:s};o!==void 0&&(c.lastError=o),this.settings.syncStatusSnapshot=c,n.recordLog!==!1&&(this.settings.syncLog=te(this.settings.syncLog??[],{time:s,phase:c.phase,message:c.message})),this.statusBarEl?.setText(C(c)),await this.saveSettings()}async syncNow(){if(!this.isUnloaded){if(!this.settings.a1Cookie){new R.Notice("\u8BF7\u5148\u767B\u5F55\u5C0F\u7EA2\u4E66\uFF0C\u518D\u6267\u884C\u540C\u6B65\u3002");return}if(!this.isSyncing){this.isSyncing=!0;try{await this.syncEngine?.syncBookmarks()}finally{this.isSyncing=!1}}}}startSyncInterval(){if(this.stopSyncInterval(),!this.settings.autoSyncEnabled)return;let t=Math.max(5,this.settings.syncIntervalMinutes);this.syncIntervalId=this.registerInterval(window.setInterval(()=>{this.syncNow()},t*60*1e3))}stopSyncInterval(){this.syncIntervalId!==null&&(window.clearInterval(this.syncIntervalId),this.syncIntervalId=null)}onunload(){this.isUnloaded=!0,this.stopSyncInterval()}};

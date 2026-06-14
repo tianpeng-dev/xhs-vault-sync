@@ -26,6 +26,14 @@ function markdownUrl(value: string): string | undefined {
   }
 }
 
+function markdownBlock(value: string): string {
+  return value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function isWenYiWenAuthor(value: string): boolean {
+  return value.trim() === "问一问";
+}
+
 export function renderNoteMarkdown(note: XhsNote): string {
   const tags = note.tags.map((tag) => `  - ${yamlString(tag)}`).join("\n");
   const media = note.media
@@ -38,6 +46,13 @@ export function renderNoteMarkdown(note: XhsNote): string {
       return `[${item.type} link](${url})`;
     })
     .join("\n\n");
+  const comments = (note.comments ?? [])
+    .filter((comment) => isWenYiWenAuthor(comment.author))
+    .filter((comment) => comment.content.trim())
+    .map((comment, index) => {
+      return [`### 回答 ${index + 1}`, "", markdownBlock(comment.content)].join("\n");
+    })
+    .join("\n\n");
 
   return [
     "---",
@@ -46,6 +61,8 @@ export function renderNoteMarkdown(note: XhsNote): string {
     `title: ${yamlString(note.title)}`,
     `author: ${yamlString(note.author)}`,
     `url: ${yamlString(note.url)}`,
+    note.syncIndex ? `syncIndex: ${note.syncIndex}` : undefined,
+    note.syncedAt ? `syncedAt: ${yamlString(note.syncedAt)}` : undefined,
     note.createdAt ? `createdAt: ${yamlString(note.createdAt)}` : undefined,
     note.updatedAt ? `updatedAt: ${yamlString(note.updatedAt)}` : undefined,
     "tags:",
@@ -57,6 +74,11 @@ export function renderNoteMarkdown(note: XhsNote): string {
     note.content || "(No content)",
     "",
     media
+      ? media
+      : undefined,
+    comments ? "## 问一问回答" : undefined,
+    comments ? "" : undefined,
+    comments || undefined
   ]
     .filter((line) => line !== undefined)
     .join("\n")

@@ -1,3 +1,6 @@
+import type { SyncLogEntry, SyncStatusSnapshot } from "./sync/status";
+import { createIdleStatus } from "./sync/status";
+
 export type SyncTarget = "bookmark";
 
 export interface XhsVaultSyncSettings {
@@ -13,7 +16,27 @@ export interface XhsVaultSyncSettings {
   userName: string;
   syncCursors: Record<string, string>;
   syncedIds: Record<string, true>;
+  nextSyncIndex: number;
   lastSyncAt: number;
+  hasSeenOnboarding: boolean;
+  syncStatusSnapshot: SyncStatusSnapshot;
+  syncLog: SyncLogEntry[];
+  lastSyncError: string;
+  lastBookmarkDebug?: {
+    topLevelKeys: string[];
+    dataKeys: string[];
+    noteCount: number;
+    hasMore: boolean;
+    cursorPresent: boolean;
+    codeType: string;
+    codeValue?: string;
+    messagePresent: boolean;
+    messagePreview?: string;
+    tokenCount?: number;
+    sourceSummary?: string;
+    itemKeySummary?: string;
+    cardKeySummary?: string;
+  };
 }
 
 export function createDefaultSettings(): XhsVaultSyncSettings {
@@ -30,7 +53,13 @@ export function createDefaultSettings(): XhsVaultSyncSettings {
     userName: "",
     syncCursors: {},
     syncedIds: {},
-    lastSyncAt: 0
+    nextSyncIndex: 1,
+    lastSyncAt: 0,
+    hasSeenOnboarding: false,
+    syncStatusSnapshot: createIdleStatus(),
+    syncLog: [],
+    lastSyncError: "",
+    lastBookmarkDebug: undefined
   };
 }
 
