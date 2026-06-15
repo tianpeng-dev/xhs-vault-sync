@@ -6,6 +6,7 @@ import { VaultWriter } from "../vault/vault-writer";
 import { XhsApi } from "../xhs/api";
 import { readXhsCookieHeader } from "../xhs/cookies";
 import { SignManager } from "../xhs/sign-manager";
+import { switchAccountSyncState } from "./account-state";
 import { downloadMedia } from "./media-downloader";
 import { sanitizeStatusMessage } from "./status";
 
@@ -48,8 +49,7 @@ export class SyncEngine {
       const api = new XhsApi(signer, cookies);
       const writer = new VaultWriter(this.plugin.app, this.plugin.settings.rootFolder);
       const user = await api.getCurrentUser();
-      this.plugin.settings.userId = user.userId;
-      this.plugin.settings.userName = user.userName;
+      switchAccountSyncState(this.plugin.settings, user);
 
       const activeTarget = this.plugin.settings.activeSyncTarget ?? "bookmark";
       const targetLabel = syncTargetLabel(activeTarget);

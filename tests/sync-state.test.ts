@@ -605,6 +605,52 @@ describe("sync state helpers", () => {
     expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
   });
 
+  it("restores per-account sync state after the current login resolves to another user", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "like",
+      syncedIds: { "post:old-note": true },
+      syncCursors: { post: "old-cursor" },
+      syncBatchSize: 2
+    });
+    plugin.settings.userId = "old-user";
+    plugin.settings.userName = "旧账号";
+    plugin.settings.perAccountState = {
+      "user1": {
+        syncCursors: { like: "saved-like-cursor" },
+        syncedIds: { "like:like-note": true },
+        allSynced: { like: false },
+        albumWhitelist: { "album-a": true },
+        lastAlbumSnapshot: [{ id: "album-a", title: "旅行" }],
+        bookmarkCateNextCursor: { "album-a": "album-cursor" },
+        cateSyncAllBookmark: { "album-a": false },
+        nextSyncIndex: 20
+      }
+    };
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(plugin.settings.perAccountState["old-user"]).toMatchObject({
+      syncCursors: { post: "old-cursor" },
+      syncedIds: { "post:old-note": true }
+    });
+    expect(syncEngineMocks.api.getUserLikes).toHaveBeenCalledWith(
+      "user1",
+      "saved-like-cursor",
+      30
+    );
+    expect(syncEngineMocks.api.getNoteDetail).not.toHaveBeenCalledWith(
+      "like-note",
+      "like-token"
+    );
+    expect(plugin.settings).toMatchObject({
+      userId: "user1",
+      userName: "用户",
+      syncedIds: { "like:like-note": true },
+      nextSyncIndex: 20
+    });
+  });
+
   it("uses whitelisted album order, writes album metadata, and marks album scoped sync state", async () => {
     const plugin = createPluginHarness({
       activeSyncTarget: "album",

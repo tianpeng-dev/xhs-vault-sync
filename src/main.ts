@@ -8,6 +8,7 @@ import {
   type SyncPhase,
   type SyncStatusSnapshot
 } from "./sync/status";
+import { switchAccountSyncState } from "./sync/account-state";
 import { SyncEngine } from "./sync/sync-engine";
 import { LoginModal } from "./ui/login-modal";
 import { OnboardingModal } from "./ui/onboarding-modal";
@@ -213,8 +214,7 @@ export default class XhsVaultSyncPlugin extends Plugin {
       this.settings.cookies = "";
       const api = new XhsApi(signer, cookies);
       const user = await api.getCurrentUser();
-      this.settings.userId = user.userId;
-      this.settings.userName = user.userName;
+      switchAccountSyncState(this.settings, user);
       this.settings.lastAlbumSnapshot = await api.getUserBoards(user.userId);
       await this.saveSettings();
       await this.updateSyncStatus({

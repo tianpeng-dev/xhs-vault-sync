@@ -9,6 +9,7 @@ export interface AccountSyncState {
   syncedIds: Record<string, true>;
   allSynced: Record<string, boolean>;
   albumWhitelist: Record<string, true>;
+  lastAlbumSnapshot: XhsAlbum[];
   bookmarkCateNextCursor: Record<string, string>;
   cateSyncAllBookmark: Record<string, boolean>;
   nextSyncIndex: number;
