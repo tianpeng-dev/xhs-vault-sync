@@ -90,6 +90,9 @@ describe("XhsVaultSyncSettingTab", () => {
     plugin.settings = {
       ...createDefaultSettings(),
       a1Cookie: "a1=secret_cookie_value_123456",
+      userName: "测试用户",
+      activeSyncTarget: "like",
+      lastSyncError: "web_session=secret_session_value_123456",
       lastSyncAt: new Date("2026-06-13T12:00:00Z").getTime(),
       syncedIds: {
         note1: true,
@@ -104,9 +107,13 @@ describe("XhsVaultSyncSettingTab", () => {
     expect(text).toContain("XHS Vault Sync");
     expect(text).toContain("当前状态");
     expect(text).toContain("登录状态：已保存登录态");
+    expect(text).toContain("当前账号：测试用户");
+    expect(text).toContain("同步目标：点赞");
     expect(text).toContain("上次同步：");
     expect(text).toContain("已同步：2 条");
+    expect(text).toContain("最近错误：web_session=[redacted]");
     expect(text).not.toContain("secret_cookie_value_123456");
+    expect(text).not.toContain("secret_session_value_123456");
   });
 
   it("提供登录、立即同步和查看状态操作按钮并调用插件方法", () => {

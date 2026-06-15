@@ -1,5 +1,6 @@
 import { Modal } from "obsidian";
 import type XhsVaultSyncPlugin from "../main";
+import type { SyncTarget } from "../settings";
 import { formatStatusLine, sanitizeStatusMessage } from "../sync/status";
 
 const RAW_RESPONSE_PATTERN =
@@ -13,6 +14,13 @@ function formatLogMessage(message: string): string {
   return sanitizeStatusMessage(message)
     .replace(RAW_RESPONSE_PATTERN, "[response redacted]")
     .trim();
+}
+
+function syncTargetLabel(target: SyncTarget): string {
+  if (target === "post") return "我的笔记";
+  if (target === "like") return "点赞";
+  if (target === "album") return "专辑";
+  return "收藏";
 }
 
 export class SyncStatusModal extends Modal {
@@ -33,6 +41,23 @@ export class SyncStatusModal extends Modal {
     contentEl.createEl("p", {
       text: `上次同步：${formatOptionalTime(settings.lastSyncAt, "暂无")}`
     });
+    contentEl.createEl("p", {
+      text: `当前账号：${settings.userName || settings.userId || "未识别"}`
+    });
+    contentEl.createEl("p", {
+      text: `同步目标：${syncTargetLabel(settings.activeSyncTarget)}`
+    });
+    contentEl.createEl("p", {
+      text: `进度：${status.currentIndex ?? 0} / ${status.totalCount ?? 0}`
+    });
+    contentEl.createEl("p", {
+      text: `发现：${status.discoveredCount ?? 0} 条，保存：${status.savedCount ?? 0} 条，跳过：${status.skippedCount ?? 0} 条`
+    });
+    if (status.lastError || settings.lastSyncError) {
+      contentEl.createEl("p", {
+        text: `最近错误：${sanitizeStatusMessage(status.lastError || settings.lastSyncError)}`
+      });
+    }
     contentEl.createEl("p", { text: `已同步：${syncedCount} 条` });
     contentEl.createEl("p", { text: `保存目录：${settings.rootFolder}` });
 

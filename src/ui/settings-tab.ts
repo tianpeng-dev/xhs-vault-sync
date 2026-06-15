@@ -1,6 +1,14 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type { SyncTarget } from "../settings";
 import type XhsVaultSyncPlugin from "../main";
+import { sanitizeStatusMessage } from "../sync/status";
+
+function syncTargetLabel(target: SyncTarget): string {
+  if (target === "post") return "我的笔记";
+  if (target === "like") return "点赞";
+  if (target === "album") return "专辑";
+  return "收藏";
+}
 
 export class XhsVaultSyncSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: XhsVaultSyncPlugin) {
@@ -17,6 +25,12 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
       text: this.plugin.settings.a1Cookie ? "登录状态：已保存登录态" : "登录状态：未登录"
     });
     containerEl.createEl("p", {
+      text: `当前账号：${this.plugin.settings.userName || this.plugin.settings.userId || "未识别"}`
+    });
+    containerEl.createEl("p", {
+      text: `同步目标：${syncTargetLabel(this.plugin.settings.activeSyncTarget)}`
+    });
+    containerEl.createEl("p", {
       text: this.plugin.settings.lastSyncAt
         ? `上次同步：${new Date(this.plugin.settings.lastSyncAt).toLocaleString()}`
         : "上次同步：暂无"
@@ -24,6 +38,11 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
     containerEl.createEl("p", {
       text: `已同步：${Object.keys(this.plugin.settings.syncedIds).length} 条`
     });
+    if (this.plugin.settings.lastSyncError) {
+      containerEl.createEl("p", {
+        text: `最近错误：${sanitizeStatusMessage(this.plugin.settings.lastSyncError)}`
+      });
+    }
     const isLoggedIn = Boolean(this.plugin.settings.a1Cookie);
 
     new Setting(containerEl)
