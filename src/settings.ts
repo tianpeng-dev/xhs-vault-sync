@@ -24,6 +24,11 @@ export interface XhsVaultSyncSettings {
   syncTargets: SyncTarget[];
   downloadImages: boolean;
   downloadVideos: boolean;
+  enableAiClassify: boolean;
+  openaiApiKey: string;
+  openaiBaseUrl: string;
+  openaiModel: string;
+  categories: string[];
   cookies: string;
   a1Cookie: string;
   userId: string;
@@ -69,6 +74,11 @@ export function createDefaultSettings(): XhsVaultSyncSettings {
     syncTargets: ["bookmark"],
     downloadImages: true,
     downloadVideos: false,
+    enableAiClassify: false,
+    openaiApiKey: "",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    openaiModel: "gpt-4o-mini",
+    categories: [],
     cookies: "",
     a1Cookie: "",
     userId: "",

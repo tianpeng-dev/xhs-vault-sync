@@ -191,5 +191,75 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    containerEl.createEl("h3", { text: "AI 分类" });
+    new Setting(containerEl)
+      .setName("启用 AI 分类")
+      .setDesc("使用 OpenAI 兼容接口为同步笔记写入 category，失败不会阻断同步。")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableAiClassify)
+          .onChange(async (value) => {
+            this.plugin.settings.enableAiClassify = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("API Key")
+      .setDesc("仅保存到本地 Obsidian 插件配置，请使用专用低权限 Key。")
+      .addText((text) =>
+        text
+          .setPlaceholder("sk-...")
+          .setValue(this.plugin.settings.openaiApiKey ? "********" : "")
+          .onChange(async (value) => {
+            if (value && value !== "********") {
+              this.plugin.settings.openaiApiKey = value.trim();
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("API Base URL")
+      .setDesc("OpenAI 兼容接口地址。")
+      .addText((text) =>
+        text
+          .setPlaceholder("https://api.openai.com/v1")
+          .setValue(this.plugin.settings.openaiBaseUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.openaiBaseUrl = value.trim() || "https://api.openai.com/v1";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("模型")
+      .setDesc("OpenAI 兼容 chat completions 模型名称。")
+      .addText((text) =>
+        text
+          .setPlaceholder("gpt-4o-mini")
+          .setValue(this.plugin.settings.openaiModel)
+          .onChange(async (value) => {
+            this.plugin.settings.openaiModel = value.trim() || "gpt-4o-mini";
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("分类列表")
+      .setDesc("用逗号或换行分隔，AI 只能从这些分类中选择。")
+      .addText((text) =>
+        text
+          .setPlaceholder("AI 工具, 生活, 工作")
+          .setValue(this.plugin.settings.categories.join(", "))
+          .onChange(async (value) => {
+            this.plugin.settings.categories = value
+              .split(/[,\n，]/)
+              .map((item) => item.trim())
+              .filter(Boolean);
+            await this.plugin.saveSettings();
+          })
+      );
   }
 }

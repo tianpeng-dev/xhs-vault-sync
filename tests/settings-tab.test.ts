@@ -273,4 +273,40 @@ describe("XhsVaultSyncSettingTab", () => {
     expect(plugin.settings.albumWhitelist).toEqual({ "album-b": true });
     expect(saveSettings).toHaveBeenCalledTimes(2);
   });
+
+  it("提供 AI 分类设置并保存配置", async () => {
+    const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
+    plugin.settings = createDefaultSettings();
+    const saveSettings = vi.spyOn(plugin, "saveSettings").mockResolvedValue(undefined);
+    const tab = new XhsVaultSyncSettingTab(plugin.app, plugin);
+
+    tab.display();
+
+    const container = tab.containerEl as ElementNode;
+    const text = collectText(container).join("\n");
+    expect(text).toContain("AI 分类");
+    expect(text).toContain("启用 AI 分类");
+    expect(text).toContain("API Key");
+    expect(text).toContain("API Base URL");
+    expect(text).toContain("模型");
+    expect(text).toContain("分类列表");
+
+    const inputs = collectInputs(container);
+    const aiInputs = inputs.slice(-5);
+    aiInputs[0].change?.(true);
+    aiInputs[1].change?.("sk-test");
+    aiInputs[2].change?.("https://api.example.com/v1/");
+    aiInputs[3].change?.("test-model");
+    aiInputs[4].change?.("AI 工具, 生活\n工作");
+    await Promise.resolve();
+
+    expect(plugin.settings).toMatchObject({
+      enableAiClassify: true,
+      openaiApiKey: "sk-test",
+      openaiBaseUrl: "https://api.example.com/v1/",
+      openaiModel: "test-model",
+      categories: ["AI 工具", "生活", "工作"]
+    });
+    expect(saveSettings).toHaveBeenCalledTimes(5);
+  });
 });

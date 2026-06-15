@@ -61,6 +61,7 @@ export function renderNoteMarkdown(note: XhsNote): string {
     `title: ${yamlString(note.title)}`,
     `author: ${yamlString(note.author)}`,
     `url: ${yamlString(note.url)}`,
+    note.category ? `category: ${yamlString(note.category)}` : undefined,
     note.syncTarget ? `syncTarget: ${yamlString(note.syncTarget)}` : undefined,
     note.albumId ? `albumId: ${yamlString(note.albumId)}` : undefined,
     note.albumTitle ? `albumTitle: ${yamlString(note.albumTitle)}` : undefined,

@@ -7,6 +7,7 @@ import { XhsApi } from "../xhs/api";
 import { readXhsCookieHeader } from "../xhs/cookies";
 import { SignManager } from "../xhs/sign-manager";
 import { switchAccountSyncState } from "./account-state";
+import { classifyNoteCategory } from "./ai-classifier";
 import { downloadMedia } from "./media-downloader";
 import { sanitizeStatusMessage } from "./status";
 
@@ -132,6 +133,7 @@ export class SyncEngine {
           detail.albumId = item.albumId ?? albumContext?.album?.id;
           detail.albumTitle = item.albumTitle ?? albumContext?.album?.title;
         }
+        await classifyDetailIfEnabled(this.plugin, detail);
 
         for (let index = 0; index < detail.media.length; index++) {
           const media = detail.media[index];
@@ -199,6 +201,30 @@ export class SyncEngine {
       signer.destroy();
       this.isSyncing = false;
     }
+  }
+}
+
+async function classifyDetailIfEnabled(
+  plugin: XhsVaultSyncPlugin,
+  detail: XhsNote
+): Promise<void> {
+  const settings = plugin.settings;
+  if (!settings.enableAiClassify || !settings.openaiApiKey || !settings.categories.length) return;
+
+  try {
+    const category = await classifyNoteCategory(detail, {
+      apiKey: settings.openaiApiKey,
+      baseUrl: settings.openaiBaseUrl,
+      model: settings.openaiModel,
+      categories: settings.categories
+    });
+    if (category) detail.category = category;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await plugin.updateSyncStatus({
+      phase: "saving",
+      message: `AI 分类失败，继续保存：${sanitizeStatusMessage(message)}`
+    });
   }
 }
 

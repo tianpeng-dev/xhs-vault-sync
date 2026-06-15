@@ -34,6 +34,7 @@ const syncEngineMocks = vi.hoisted(() => {
     signer,
     api,
     writer,
+    classifyNoteCategory: vi.fn(),
     readXhsCookieHeader: vi.fn()
   };
 });
@@ -60,10 +61,15 @@ vi.mock("../src/xhs/cookies", () => ({
   readXhsCookieHeader: syncEngineMocks.readXhsCookieHeader
 }));
 
+vi.mock("../src/sync/ai-classifier", () => ({
+  classifyNoteCategory: syncEngineMocks.classifyNoteCategory
+}));
+
 describe("sync state helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     syncEngineMocks.readXhsCookieHeader.mockResolvedValue("a1=session");
+    syncEngineMocks.classifyNoteCategory.mockResolvedValue(null);
     syncEngineMocks.signer.initWebview.mockResolvedValue(undefined);
     syncEngineMocks.signer.collectNoteDetail.mockResolvedValue(null);
     syncEngineMocks.signer.collectBookmarks.mockResolvedValue({
@@ -701,6 +707,38 @@ describe("sync state helpers", () => {
     });
   });
 
+  it("writes AI category when classification is enabled", async () => {
+    const plugin = createPluginHarness({
+      syncedIds: {},
+      syncBatchSize: 1
+    });
+    plugin.settings.enableAiClassify = true;
+    plugin.settings.openaiApiKey = "sk-secret";
+    plugin.settings.openaiBaseUrl = "https://api.example.com/v1";
+    plugin.settings.openaiModel = "test-model";
+    plugin.settings.categories = ["AI 工具", "生活"];
+    syncEngineMocks.classifyNoteCategory.mockResolvedValue("AI 工具");
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.classifyNoteCategory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "note1" }),
+      {
+        apiKey: "sk-secret",
+        baseUrl: "https://api.example.com/v1",
+        model: "test-model",
+        categories: ["AI 工具", "生活"]
+      }
+    );
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "note1",
+        category: "AI 工具"
+      })
+    );
+  });
+
   it("rejects album sync without a whitelist and does not write notes", async () => {
     const plugin = createPluginHarness({
       activeSyncTarget: "album",
@@ -1027,6 +1065,11 @@ function createPluginHarness(overrides: Partial<{
     syncBatchSize: overrides.syncBatchSize ?? 2,
     downloadImages: false,
     downloadVideos: overrides.downloadVideos ?? false,
+    enableAiClassify: false,
+    openaiApiKey: "",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    openaiModel: "gpt-4o-mini",
+    categories: [],
     rootFolder: "RedNote",
     lastSyncAt: 0,
     lastSyncError: "",

@@ -54,6 +54,21 @@ describe("renderNoteMarkdown", () => {
     expect(markdown).toContain('albumTitle: "旅行"');
   });
 
+  it("renders AI category in frontmatter", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "分类笔记",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [],
+      category: "AI 工具"
+    });
+
+    expect(markdown).toContain('category: "AI 工具"');
+  });
+
   it("escapes brackets in local image wikilinks", () => {
     const markdown = renderNoteMarkdown({
       id: "note1",
