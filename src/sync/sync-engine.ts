@@ -1,5 +1,6 @@
 import { Notice } from "obsidian";
 import type XhsVaultSyncPlugin from "../main";
+import type { SyncTarget } from "../settings";
 import type { BookmarkPage, XhsComment, XhsNote } from "./types";
 import { VaultWriter } from "../vault/vault-writer";
 import { XhsApi } from "../xhs/api";
@@ -50,23 +51,26 @@ export class SyncEngine {
       this.plugin.settings.userId = user.userId;
       this.plugin.settings.userName = user.userName;
 
+      const activeTarget = this.plugin.settings.activeSyncTarget ?? "bookmark";
+      const targetLabel = syncTargetLabel(activeTarget);
+
       await this.plugin.updateSyncStatus({
         phase: "collecting",
-        message: "正在读取收藏",
+        message: `正在读取${targetLabel}`,
         discoveredCount: 0,
         savedCount: 0,
         skippedCount: 0
       });
 
       const pageSize = Math.max(30, this.plugin.settings.syncBatchSize);
-      const apiPage = await collectApiBookmarksSafely(
+      const page = await collectListByTarget(
+        activeTarget,
         api,
+        signer,
         user.userId,
-        this.plugin.settings.syncCursors.bookmark ?? "",
+        this.plugin.settings.syncCursors[activeTarget] ?? "",
         pageSize
       );
-      const collectedPage = await collectVisibleBookmarksSafely(signer, user.userId, pageSize);
-      const page = mergeBookmarkPages(apiPage, collectedPage);
       this.plugin.settings.lastBookmarkDebug = page.debug;
       let saved = 0;
       let skipped = 0;
@@ -85,7 +89,8 @@ export class SyncEngine {
       });
 
       for (const item of page.notes) {
-        if (!shouldSyncNote(this.plugin.settings.syncedIds, item.noteId)) {
+        const syncedKey = syncTargetNoteKey(activeTarget, item.noteId);
+        if (!shouldSyncNote(this.plugin.settings.syncedIds, syncedKey)) {
           skipped++;
           continue;
         }
@@ -119,6 +124,7 @@ export class SyncEngine {
           continue;
         }
         detail.comments = filterWenYiWenAnswers(detail.comments);
+        detail.syncTarget = activeTarget;
 
         for (let index = 0; index < detail.media.length; index++) {
           const media = detail.media[index];
@@ -140,7 +146,7 @@ export class SyncEngine {
         detail.syncedAt = new Date().toISOString();
         await writer.writeNote(detail);
         this.plugin.settings.nextSyncIndex = syncIndex + 1;
-        markNoteSynced(this.plugin.settings.syncedIds, item.noteId);
+        markNoteSynced(this.plugin.settings.syncedIds, syncedKey);
         saved++;
         if (saved >= this.plugin.settings.syncBatchSize) {
           reachedBatchLimit = true;
@@ -149,7 +155,7 @@ export class SyncEngine {
       }
 
       if (!reachedBatchLimit) {
-        this.plugin.settings.syncCursors.bookmark = page.cursor;
+        this.plugin.settings.syncCursors[activeTarget] = page.cursor;
       }
       this.plugin.settings.lastSyncAt = Date.now();
       this.plugin.settings.lastSyncError = "";
@@ -270,6 +276,36 @@ function mergeBookmarkPages(apiPage: BookmarkPage, collectedPage: BookmarkPage):
       cardKeySummary: collectedPage.debug.cardKeySummary || apiPage.debug.cardKeySummary
     }
   };
+}
+
+function syncTargetLabel(target: SyncTarget): string {
+  if (target === "post") return "我的笔记";
+  if (target === "like") return "点赞";
+  if (target === "album") return "专辑";
+  return "收藏";
+}
+
+function syncTargetNoteKey(target: SyncTarget, noteId: string): string {
+  if (target === "bookmark") return noteId;
+  return `${target}:${noteId}`;
+}
+
+async function collectListByTarget(
+  target: SyncTarget,
+  api: XhsApi,
+  signer: SignManager,
+  userId: string,
+  cursor: string,
+  pageSize: number
+): Promise<BookmarkPage> {
+  if (target === "bookmark") {
+    const apiPage = await collectApiBookmarksSafely(api, userId, cursor, pageSize);
+    const collectedPage = await collectVisibleBookmarksSafely(signer, userId, pageSize);
+    return mergeBookmarkPages(apiPage, collectedPage);
+  }
+  if (target === "post") return api.getUserPosts(userId, cursor, pageSize);
+  if (target === "like") return api.getUserLikes(userId, cursor, pageSize);
+  throw new Error("专辑同步尚未实现");
 }
 
 async function collectVisibleBookmarksSafely(

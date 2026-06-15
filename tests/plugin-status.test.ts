@@ -233,6 +233,18 @@ describe("插件状态栏契约", () => {
     });
   });
 
+  it("loadSettings 会把旧配置里的专辑同步目标迁移回当前阶段支持目标", async () => {
+    const plugin = createPlugin({
+      activeSyncTarget: "album" as any,
+      syncTargets: ["bookmark", "album"] as any
+    });
+
+    await plugin.loadSettings();
+
+    expect(plugin.settings.activeSyncTarget).toBe("bookmark");
+    expect(plugin.settings.syncTargets).toEqual(["bookmark"]);
+  });
+
   it("syncNow 重复触发时只运行一个同步任务", async () => {
     let finishSync!: () => void;
     const syncBookmarks = vi.fn(

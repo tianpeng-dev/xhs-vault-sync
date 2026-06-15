@@ -13,6 +13,24 @@ import { LoginModal } from "./ui/login-modal";
 import { OnboardingModal } from "./ui/onboarding-modal";
 import { XhsVaultSyncSettingTab } from "./ui/settings-tab";
 import { SyncStatusModal } from "./ui/status-modal";
+import type { SyncTarget } from "./settings";
+
+const SUPPORTED_SYNC_TARGETS: SyncTarget[] = ["bookmark", "post", "like"];
+
+function isSupportedSyncTarget(value: unknown): value is SyncTarget {
+  return SUPPORTED_SYNC_TARGETS.includes(value as SyncTarget);
+}
+
+function normalizeActiveSyncTarget(value: unknown): SyncTarget {
+  return isSupportedSyncTarget(value) ? value : "bookmark";
+}
+
+function normalizeSyncTargets(values: unknown, fallback: SyncTarget[]): SyncTarget[] {
+  const filtered = Array.isArray(values)
+    ? values.filter(isSupportedSyncTarget)
+    : fallback.filter(isSupportedSyncTarget);
+  return filtered.length ? filtered : ["bookmark"];
+}
 
 export default class XhsVaultSyncPlugin extends Plugin {
   settings: XhsVaultSyncSettings = createDefaultSettings();
@@ -68,9 +86,10 @@ export default class XhsVaultSyncPlugin extends Plugin {
 
     this.settings = Object.assign(defaults, loaded, {
       cookies: "",
+      activeSyncTarget: normalizeActiveSyncTarget(loaded?.activeSyncTarget),
       syncCursors: { ...(loaded?.syncCursors ?? {}) },
       syncedIds: { ...(loaded?.syncedIds ?? {}) },
-      syncTargets: [...(loaded?.syncTargets ?? defaults.syncTargets)],
+      syncTargets: normalizeSyncTargets(loaded?.syncTargets, defaults.syncTargets),
       downloadVideos: loaded?.downloadVideos ?? defaults.downloadVideos,
       allSynced: { ...(loaded?.allSynced ?? {}) },
       albumWhitelist: { ...(loaded?.albumWhitelist ?? {}) },

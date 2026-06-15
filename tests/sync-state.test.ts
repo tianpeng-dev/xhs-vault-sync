@@ -18,6 +18,8 @@ const syncEngineMocks = vi.hoisted(() => {
   const api = {
     getCurrentUser: vi.fn(),
     getBookmarks: vi.fn(),
+    getUserPosts: vi.fn(),
+    getUserLikes: vi.fn(),
     getNoteDetail: vi.fn()
   };
   const writer = {
@@ -96,6 +98,34 @@ describe("sync state helpers", () => {
         topLevelKeys: ["data"],
         dataKeys: ["notes"],
         noteCount: 3,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "post-note", xsecToken: "post-token" }],
+      cursor: "post-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+    syncEngineMocks.api.getUserLikes.mockResolvedValue({
+      notes: [{ noteId: "like-note", xsecToken: "like-token" }],
+      cursor: "like-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
         hasMore: false,
         cursorPresent: true,
         codeType: "undefined",
@@ -438,6 +468,123 @@ describe("sync state helpers", () => {
     expect(plugin.settings.syncedIds).toEqual({ "page-note": true });
   });
 
+  it("uses user posts when active sync target is post and writes the target into note detail", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncCursors: { post: "post-cursor" },
+      syncedIds: {},
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserPosts).toHaveBeenCalledWith("user1", "post-cursor", 30);
+    expect(syncEngineMocks.api.getBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.signer.collectBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("post-note", "post-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "post-note",
+        syncTarget: "post"
+      })
+    );
+    expect(plugin.settings.syncCursors.post).toBe("post-next-cursor");
+    expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
+  });
+
+  it("does not treat a bookmark synced id as already synced for user posts", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncedIds: { "same-note": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "same-note", xsecToken: "same-token" }],
+      cursor: "same-post-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "same-note",
+        syncTarget: "post"
+      })
+    );
+    expect(plugin.settings.syncedIds).toEqual({
+      "same-note": true,
+      "post:same-note": true
+    });
+  });
+
+  it("skips user posts that are already synced for the post target", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncedIds: { "post:same-note": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "same-note", xsecToken: "same-token" }],
+      cursor: "same-post-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getNoteDetail).not.toHaveBeenCalledWith("same-note", "same-token");
+    expect(syncEngineMocks.writer.writeNote).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: "same-note" })
+    );
+    expect(plugin.settings.syncedIds).toEqual({ "post:same-note": true });
+  });
+
+  it("uses user likes when active sync target is like and writes the target into note detail", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "like",
+      syncCursors: { like: "like-cursor" },
+      syncedIds: {},
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserLikes).toHaveBeenCalledWith("user1", "like-cursor", 30);
+    expect(syncEngineMocks.api.getBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.signer.collectBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("like-note", "like-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "like-note",
+        syncTarget: "like"
+      })
+    );
+    expect(plugin.settings.syncCursors.like).toBe("like-next-cursor");
+    expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
+  });
+
   it("skips visible page error candidates without consuming sync index", async () => {
     const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, nextSyncIndex: 7 });
     const engine = new SyncEngine(plugin);
@@ -720,6 +867,8 @@ describe("sync state helpers", () => {
 function createPluginHarness(overrides: Partial<{
   cookies: string;
   syncedIds: Record<string, true>;
+  syncCursors: Record<string, string>;
+  activeSyncTarget: "bookmark" | "post" | "like" | "album";
   syncBatchSize: number;
   nextSyncIndex: number;
   downloadVideos: boolean;
@@ -729,7 +878,7 @@ function createPluginHarness(overrides: Partial<{
     cookies: overrides.cookies ?? "",
     userId: "",
     userName: "",
-    syncCursors: {},
+    syncCursors: overrides.syncCursors ?? {},
     syncedIds: overrides.syncedIds ?? ({ note1: true } as Record<string, true>),
     allSynced: {},
     albumWhitelist: {},
@@ -737,7 +886,7 @@ function createPluginHarness(overrides: Partial<{
     cateSyncAllBookmark: {},
     perAccountState: {},
     nextSyncIndex: overrides.nextSyncIndex ?? 1,
-    activeSyncTarget: "bookmark" as const,
+    activeSyncTarget: overrides.activeSyncTarget ?? "bookmark",
     syncTargets: ["bookmark" as const],
     syncBatchSize: overrides.syncBatchSize ?? 2,
     downloadImages: false,

@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Setting } from "obsidian";
 import XhsVaultSyncPlugin from "../src/main";
 import { createDefaultSettings } from "../src/settings";
 import { XhsVaultSyncSettingTab } from "../src/ui/settings-tab";
@@ -6,9 +7,17 @@ import { XhsVaultSyncSettingTab } from "../src/ui/settings-tab";
 type ElementNode = HTMLElement & {
   children?: ElementNode[];
   disabled?: boolean;
-  inputKind?: "toggle" | "text";
+  inputKind?: "toggle" | "text" | "dropdown";
   click?: () => void;
   change?: (value: string | boolean) => void;
+  createEl?: (tag: string, options?: { text?: string }) => ElementNode;
+};
+
+type SettingWithContainer = Setting & {
+  settingEl?: ElementNode;
+  containerEl?: {
+    children?: ElementNode[];
+  };
 };
 
 function collectText(element: ElementNode): string[] {
@@ -36,7 +45,46 @@ function collectInputs(element: ElementNode): ElementNode[] {
   return [...own, ...childInputs];
 }
 
+function installDropdownMock(): void {
+  if ("addDropdown" in Setting.prototype) return;
+
+  Object.defineProperty(Setting.prototype, "addDropdown", {
+    configurable: true,
+    value(callback: (dropdown: {
+      addOption(value: string, display: string): unknown;
+      setValue(value: string): unknown;
+      onChange(handler: (value: string) => unknown): unknown;
+    }) => unknown) {
+      const setting = this as SettingWithContainer;
+      const settingEl = setting.settingEl ?? setting.containerEl?.children?.at(-1);
+      const dropdownEl = settingEl?.createEl?.("select") as unknown as ElementNode | undefined;
+      if (!dropdownEl) throw new Error("dropdown mock requires a setting element");
+      dropdownEl.inputKind = "dropdown";
+      const dropdown = {
+        addOption: (value: string, display: string) => {
+          dropdownEl.createEl?.("option", { text: display });
+          return dropdown;
+        },
+        setValue: () => dropdown,
+        onChange: (handler: (value: string) => unknown) => {
+          const changeable = dropdownEl as ElementNode & {
+            __changeListeners?: Array<(value: string | boolean) => unknown>;
+          };
+          changeable.__changeListeners?.push(handler as (value: string | boolean) => unknown);
+          return dropdown;
+        }
+      };
+      callback(dropdown);
+      return this;
+    }
+  });
+}
+
 describe("XhsVaultSyncSettingTab", () => {
+  beforeEach(() => {
+    installDropdownMock();
+  });
+
   it("在标题后展示当前状态摘要且不泄露登录凭据", () => {
     const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
     plugin.settings = {
@@ -119,7 +167,7 @@ describe("XhsVaultSyncSettingTab", () => {
 
     const container = tab.containerEl as ElementNode;
     expect(collectText(container)).toContain("下载视频");
-    const inputs = collectInputs(container);
+    const inputs = collectInputs(container).filter((input) => input.inputKind !== "dropdown");
     inputs[0].change?.(true);
     inputs[1].change?.("3");
     inputs[2].change?.("  ");
@@ -136,5 +184,34 @@ describe("XhsVaultSyncSettingTab", () => {
     expect(plugin.settings.downloadVideos).toBe(true);
     expect(saveSettings).toHaveBeenCalledTimes(6);
     expect(startSyncInterval).toHaveBeenCalledTimes(2);
+  });
+
+  it("提供同步目标下拉框并保存帖子和点赞目标", async () => {
+    const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
+    plugin.settings = createDefaultSettings();
+    const saveSettings = vi.spyOn(plugin, "saveSettings").mockResolvedValue(undefined);
+    const tab = new XhsVaultSyncSettingTab(plugin.app, plugin);
+
+    tab.display();
+
+    const container = tab.containerEl as ElementNode;
+    const text = collectText(container).join("\n");
+    expect(text).toContain("同步目标");
+    expect(text).toContain("选择本次同步读取的个人数据来源。专辑将在后续版本开放。");
+
+    const dropdown = collectInputs(container).find((input) => input.inputKind === "dropdown");
+    const dropdownText = dropdown ? collectText(dropdown).join("\n") : "";
+    expect(dropdownText).toContain("收藏");
+    expect(dropdownText).toContain("我的笔记");
+    expect(dropdownText).toContain("点赞");
+    expect(dropdownText).not.toContain("专辑");
+    dropdown?.change?.("post");
+    await Promise.resolve();
+    expect(plugin.settings.activeSyncTarget).toBe("post");
+
+    dropdown?.change?.("like");
+    await Promise.resolve();
+    expect(plugin.settings.activeSyncTarget).toBe("like");
+    expect(saveSettings).toHaveBeenCalledTimes(2);
   });
 });

@@ -99,6 +99,136 @@ describe("XhsApi", () => {
     expect(requests[0]?.url).toContain("num=5");
   });
 
+  it("requests user posted notes and parses note ids with xsec tokens", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                note_id: "posted-note",
+                xsec_token: "posted-token",
+                display_title: "我的笔记",
+                user: { nickname: "作者" },
+                cover: { url_default: "https://img.example.com/posted.jpg" },
+                type: "normal"
+              }
+            ],
+            cursor: "posted-cursor",
+            has_more: true
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserPosts("u1", "cursor-a", 5)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "posted-note",
+          xsecToken: "posted-token",
+          title: "我的笔记",
+          author: "作者",
+          coverUrl: "https://img.example.com/posted.jpg",
+          noteType: "normal"
+        }
+      ],
+      cursor: "posted-cursor",
+      hasMore: true
+    });
+
+    expect(requests[0]?.url).toContain("user");
+    expect(requests[0]?.url).toContain("posted");
+    expect(requests[0]?.url).toContain("user_id=u1");
+    expect(requests[0]?.url).toContain("num=5");
+  });
+
+  it("requests user liked notes and parses note ids with xsec tokens", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                id: "liked-note",
+                xsec_token: "liked-token",
+                title: "点赞笔记",
+                author: { nickname: "点赞作者" },
+                cover_url: "https://img.example.com/liked.jpg",
+                note_type: "video"
+              }
+            ],
+            cursor: "liked-cursor",
+            has_more: false
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserLikes("u1", "", 8)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "liked-note",
+          xsecToken: "liked-token",
+          title: "点赞笔记",
+          author: "点赞作者",
+          coverUrl: "https://img.example.com/liked.jpg",
+          noteType: "video"
+        }
+      ],
+      cursor: "liked-cursor",
+      hasMore: false
+    });
+
+    expect(requests[0]?.url).toContain("user");
+    expect(requests[0]?.url).toContain("liked");
+    expect(requests[0]?.url).toContain("user_id=u1");
+    expect(requests[0]?.url).toContain("num=8");
+  });
+
+  it("rejects abnormal user post API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        msg: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getUserPosts("u1", "", 30)).rejects.toThrow(
+      "XHS post API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
+  it("rejects abnormal user like API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        message: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getUserLikes("u1", "", 30)).rejects.toThrow(
+      "XHS like API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
   it("rejects abnormal bookmark API responses instead of falling back to page-only items", async () => {
     const signer = {
       signedFetchJson: vi.fn().mockResolvedValue({

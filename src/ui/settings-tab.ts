@@ -1,4 +1,5 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
+import type { SyncTarget } from "../settings";
 import type XhsVaultSyncPlugin from "../main";
 
 export class XhsVaultSyncSettingTab extends PluginSettingTab {
@@ -99,6 +100,21 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName("同步目标")
+      .setDesc("选择本次同步读取的个人数据来源。专辑将在后续版本开放。")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("bookmark", "收藏")
+          .addOption("post", "我的笔记")
+          .addOption("like", "点赞")
+          .setValue(this.plugin.settings.activeSyncTarget)
+          .onChange(async (value) => {
+            this.plugin.settings.activeSyncTarget = value as SyncTarget;
+            await this.plugin.saveSettings();
+          });
+      });
 
     new Setting(containerEl)
       .setName("下载图片")
