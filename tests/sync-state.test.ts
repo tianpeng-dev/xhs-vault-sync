@@ -20,6 +20,8 @@ const syncEngineMocks = vi.hoisted(() => {
     getBookmarks: vi.fn(),
     getUserPosts: vi.fn(),
     getUserLikes: vi.fn(),
+    getUserBoards: vi.fn(),
+    getBoardNotes: vi.fn(),
     getNoteDetail: vi.fn()
   };
   const writer = {
@@ -121,6 +123,24 @@ describe("sync state helpers", () => {
     syncEngineMocks.api.getUserLikes.mockResolvedValue({
       notes: [{ noteId: "like-note", xsecToken: "like-token" }],
       cursor: "like-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+    syncEngineMocks.api.getUserBoards.mockResolvedValue([
+      { id: "album-a", title: "旅行", noteCount: 2 },
+      { id: "album-b", title: "食谱", noteCount: 1 }
+    ]);
+    syncEngineMocks.api.getBoardNotes.mockResolvedValue({
+      notes: [{ noteId: "album-note", xsecToken: "album-token" }],
+      cursor: "album-next-cursor",
       hasMore: false,
       debug: {
         topLevelKeys: ["data"],
@@ -585,6 +605,72 @@ describe("sync state helpers", () => {
     expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
   });
 
+  it("uses whitelisted album order, writes album metadata, and marks album scoped sync state", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "album",
+      syncedIds: { "album:album-a:album-note": true },
+      albumWhitelist: { "album-a": true, "album-b": true },
+      bookmarkCateNextCursor: { "album-b": "album-b-cursor" },
+      cateSyncAllBookmark: { "album-a": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getBoardNotes.mockResolvedValue({
+      notes: [{ noteId: "shared-note", xsecToken: "shared-token" }],
+      cursor: "album-b-next",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserBoards).toHaveBeenCalledWith("user1");
+    expect(plugin.settings.lastAlbumSnapshot).toEqual([
+      { id: "album-a", title: "旅行", noteCount: 2 },
+      { id: "album-b", title: "食谱", noteCount: 1 }
+    ]);
+    expect(syncEngineMocks.api.getBoardNotes).toHaveBeenCalledWith("album-b", "album-b-cursor", 30);
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("shared-note", "shared-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "shared-note",
+        syncTarget: "album",
+        albumId: "album-b",
+        albumTitle: "食谱"
+      })
+    );
+    expect(plugin.settings.bookmarkCateNextCursor["album-b"]).toBe("album-b-next");
+    expect(plugin.settings.cateSyncAllBookmark["album-b"]).toBe(true);
+    expect(plugin.settings.syncedIds).toEqual({
+      "album:album-a:album-note": true,
+      "album:album-b:shared-note": true
+    });
+  });
+
+  it("rejects album sync without a whitelist and does not write notes", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "album",
+      syncedIds: {},
+      albumWhitelist: {}
+    });
+    const engine = new SyncEngine(plugin);
+
+    await expect(engine.syncBookmarks()).rejects.toThrow("请先在设置中选择至少一个专辑");
+
+    expect(syncEngineMocks.api.getUserBoards).toHaveBeenCalledWith("user1");
+    expect(syncEngineMocks.api.getBoardNotes).not.toHaveBeenCalled();
+    expect(syncEngineMocks.writer.writeNote).not.toHaveBeenCalled();
+    expect(plugin.settings.syncedIds).toEqual({});
+  });
+
   it("skips visible page error candidates without consuming sync index", async () => {
     const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, nextSyncIndex: 7 });
     const engine = new SyncEngine(plugin);
@@ -872,6 +958,9 @@ function createPluginHarness(overrides: Partial<{
   syncBatchSize: number;
   nextSyncIndex: number;
   downloadVideos: boolean;
+  albumWhitelist: Record<string, true>;
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
 }> = {}) {
   const settings = {
     a1Cookie: "session",
@@ -881,9 +970,10 @@ function createPluginHarness(overrides: Partial<{
     syncCursors: overrides.syncCursors ?? {},
     syncedIds: overrides.syncedIds ?? ({ note1: true } as Record<string, true>),
     allSynced: {},
-    albumWhitelist: {},
-    bookmarkCateNextCursor: {},
-    cateSyncAllBookmark: {},
+    albumWhitelist: overrides.albumWhitelist ?? {},
+    bookmarkCateNextCursor: overrides.bookmarkCateNextCursor ?? {},
+    cateSyncAllBookmark: overrides.cateSyncAllBookmark ?? {},
+    lastAlbumSnapshot: [],
     perAccountState: {},
     nextSyncIndex: overrides.nextSyncIndex ?? 1,
     activeSyncTarget: overrides.activeSyncTarget ?? "bookmark",

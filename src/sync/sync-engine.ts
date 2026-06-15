@@ -1,7 +1,7 @@
 import { Notice } from "obsidian";
 import type XhsVaultSyncPlugin from "../main";
-import type { SyncTarget } from "../settings";
-import type { BookmarkPage, XhsComment, XhsNote } from "./types";
+import type { SyncTarget, XhsVaultSyncSettings } from "../settings";
+import type { BookmarkPage, XhsAlbum, XhsComment, XhsNote } from "./types";
 import { VaultWriter } from "../vault/vault-writer";
 import { XhsApi } from "../xhs/api";
 import { readXhsCookieHeader } from "../xhs/cookies";
@@ -63,7 +63,10 @@ export class SyncEngine {
       });
 
       const pageSize = Math.max(30, this.plugin.settings.syncBatchSize);
-      const page = await collectListByTarget(
+      const albumContext = activeTarget === "album"
+        ? await collectAlbumPage(api, user.userId, this.plugin.settings, pageSize)
+        : null;
+      const page = albumContext?.page ?? await collectListByTarget(
         activeTarget,
         api,
         signer,
@@ -89,7 +92,7 @@ export class SyncEngine {
       });
 
       for (const item of page.notes) {
-        const syncedKey = syncTargetNoteKey(activeTarget, item.noteId);
+        const syncedKey = syncTargetNoteKey(activeTarget, item);
         if (!shouldSyncNote(this.plugin.settings.syncedIds, syncedKey)) {
           skipped++;
           continue;
@@ -125,6 +128,10 @@ export class SyncEngine {
         }
         detail.comments = filterWenYiWenAnswers(detail.comments);
         detail.syncTarget = activeTarget;
+        if (activeTarget === "album") {
+          detail.albumId = item.albumId ?? albumContext?.album?.id;
+          detail.albumTitle = item.albumTitle ?? albumContext?.album?.title;
+        }
 
         for (let index = 0; index < detail.media.length; index++) {
           const media = detail.media[index];
@@ -154,7 +161,12 @@ export class SyncEngine {
         }
       }
 
-      if (!reachedBatchLimit) {
+      if (!reachedBatchLimit && albumContext?.album) {
+        this.plugin.settings.bookmarkCateNextCursor[albumContext.album.id] = page.cursor;
+        if (!page.hasMore) {
+          this.plugin.settings.cateSyncAllBookmark[albumContext.album.id] = true;
+        }
+      } else if (!reachedBatchLimit) {
         this.plugin.settings.syncCursors[activeTarget] = page.cursor;
       }
       this.plugin.settings.lastSyncAt = Date.now();
@@ -285,9 +297,10 @@ function syncTargetLabel(target: SyncTarget): string {
   return "收藏";
 }
 
-function syncTargetNoteKey(target: SyncTarget, noteId: string): string {
-  if (target === "bookmark") return noteId;
-  return `${target}:${noteId}`;
+function syncTargetNoteKey(target: SyncTarget, item: { noteId: string; albumId?: string }): string {
+  if (target === "bookmark") return item.noteId;
+  if (target === "album") return `album:${item.albumId ?? ""}:${item.noteId}`;
+  return `${target}:${item.noteId}`;
 }
 
 async function collectListByTarget(
@@ -306,6 +319,62 @@ async function collectListByTarget(
   if (target === "post") return api.getUserPosts(userId, cursor, pageSize);
   if (target === "like") return api.getUserLikes(userId, cursor, pageSize);
   throw new Error("专辑同步尚未实现");
+}
+
+async function collectAlbumPage(
+  api: XhsApi,
+  userId: string,
+  settings: XhsVaultSyncSettings,
+  pageSize: number
+): Promise<{ album?: XhsAlbum; page: BookmarkPage }> {
+  const albums = await api.getUserBoards(userId);
+  settings.lastAlbumSnapshot = albums;
+  const whitelistIds = Object.keys(settings.albumWhitelist).filter((id) => settings.albumWhitelist[id]);
+  if (!whitelistIds.length) throw new Error("请先在设置中选择至少一个专辑");
+
+  const albumsById = new Map(albums.map((album) => [album.id, album]));
+  const album = whitelistIds
+    .map((id) => albumsById.get(id))
+    .find((candidate): candidate is XhsAlbum =>
+      Boolean(candidate && settings.cateSyncAllBookmark[candidate.id] !== true)
+    );
+  if (!album) {
+    return { page: createEmptyPage("album-complete") };
+  }
+
+  const page = await api.getBoardNotes(
+    album.id,
+    settings.bookmarkCateNextCursor[album.id] ?? "",
+    pageSize
+  );
+  return {
+    album,
+    page: {
+      ...page,
+      notes: page.notes.map((item) => ({
+        ...item,
+        albumId: album.id,
+        albumTitle: album.title
+      }))
+    }
+  };
+}
+
+function createEmptyPage(source: string): BookmarkPage {
+  return {
+    notes: [],
+    cursor: "",
+    hasMore: false,
+    debug: {
+      topLevelKeys: [source],
+      dataKeys: [],
+      noteCount: 0,
+      hasMore: false,
+      cursorPresent: false,
+      codeType: source,
+      messagePresent: false
+    }
+  };
 }
 
 async function collectVisibleBookmarksSafely(

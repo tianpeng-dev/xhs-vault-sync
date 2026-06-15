@@ -35,6 +35,25 @@ describe("renderNoteMarkdown", () => {
     expect(markdown).toContain('syncedAt: "2026-06-14T00:00:00.000Z"');
   });
 
+  it("renders sync target and album metadata in frontmatter", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "专辑笔记",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [],
+      syncTarget: "album",
+      albumId: "album-a",
+      albumTitle: "旅行"
+    });
+
+    expect(markdown).toContain('syncTarget: "album"');
+    expect(markdown).toContain('albumId: "album-a"');
+    expect(markdown).toContain('albumTitle: "旅行"');
+  });
+
   it("escapes brackets in local image wikilinks", () => {
     const markdown = renderNoteMarkdown({
       id: "note1",

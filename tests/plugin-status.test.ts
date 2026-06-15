@@ -209,6 +209,7 @@ describe("插件状态栏契约", () => {
       downloadVideos: false,
       allSynced: {},
       albumWhitelist: {},
+      lastAlbumSnapshot: [],
       bookmarkCateNextCursor: {},
       cateSyncAllBookmark: {},
       perAccountState: {},
@@ -233,7 +234,7 @@ describe("插件状态栏契约", () => {
     });
   });
 
-  it("loadSettings 会把旧配置里的专辑同步目标迁移回当前阶段支持目标", async () => {
+  it("loadSettings 保留合法专辑同步目标并补齐专辑快照默认值", async () => {
     const plugin = createPlugin({
       activeSyncTarget: "album" as any,
       syncTargets: ["bookmark", "album"] as any
@@ -241,8 +242,9 @@ describe("插件状态栏契约", () => {
 
     await plugin.loadSettings();
 
-    expect(plugin.settings.activeSyncTarget).toBe("bookmark");
-    expect(plugin.settings.syncTargets).toEqual(["bookmark"]);
+    expect(plugin.settings.activeSyncTarget).toBe("album");
+    expect(plugin.settings.syncTargets).toEqual(["bookmark", "album"]);
+    expect(plugin.settings.lastAlbumSnapshot).toEqual([]);
   });
 
   it("syncNow 重复触发时只运行一个同步任务", async () => {

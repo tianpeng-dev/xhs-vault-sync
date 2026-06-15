@@ -48,6 +48,8 @@ export interface BookmarkPage {
     author?: string;
     coverUrl?: string;
     noteType?: string;
+    albumId?: string;
+    albumTitle?: string;
   }>;
   cursor: string;
   hasMore: boolean;

@@ -103,18 +103,51 @@ export class XhsVaultSyncSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("同步目标")
-      .setDesc("选择本次同步读取的个人数据来源。专辑将在后续版本开放。")
+      .setDesc("选择本次同步读取的个人数据来源。")
       .addDropdown((dropdown) => {
         dropdown
           .addOption("bookmark", "收藏")
           .addOption("post", "我的笔记")
           .addOption("like", "点赞")
+          .addOption("album", "专辑")
           .setValue(this.plugin.settings.activeSyncTarget)
           .onChange(async (value) => {
             this.plugin.settings.activeSyncTarget = value as SyncTarget;
             await this.plugin.saveSettings();
           });
       });
+
+    new Setting(containerEl)
+      .setName("专辑白名单")
+      .setDesc("仅同步已选择的专辑。")
+      .addButton((button) =>
+        button.setButtonText("刷新专辑列表").onClick(() => {
+          void this.plugin.refreshAlbums();
+        })
+      );
+
+    const albums = this.plugin.settings.lastAlbumSnapshot ?? [];
+    if (!albums.length) {
+      containerEl.createEl("p", { text: "暂无专辑快照，请先刷新专辑列表。" });
+    }
+    for (const album of albums) {
+      const countText = album.noteCount === undefined ? "" : `（${album.noteCount} 条）`;
+      new Setting(containerEl)
+        .setName(`${album.title}${countText}`)
+        .setDesc(album.id)
+        .addToggle((toggle) =>
+          toggle
+            .setValue(Boolean(this.plugin.settings.albumWhitelist[album.id]))
+            .onChange(async (value) => {
+              if (value) {
+                this.plugin.settings.albumWhitelist[album.id] = true;
+              } else {
+                delete this.plugin.settings.albumWhitelist[album.id];
+              }
+              await this.plugin.saveSettings();
+            })
+        );
+    }
 
     new Setting(containerEl)
       .setName("下载图片")

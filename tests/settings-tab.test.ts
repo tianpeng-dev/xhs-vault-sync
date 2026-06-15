@@ -186,7 +186,7 @@ describe("XhsVaultSyncSettingTab", () => {
     expect(startSyncInterval).toHaveBeenCalledTimes(2);
   });
 
-  it("提供同步目标下拉框并保存帖子和点赞目标", async () => {
+  it("提供同步目标下拉框并保存帖子、点赞和专辑目标", async () => {
     const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
     plugin.settings = createDefaultSettings();
     const saveSettings = vi.spyOn(plugin, "saveSettings").mockResolvedValue(undefined);
@@ -197,14 +197,14 @@ describe("XhsVaultSyncSettingTab", () => {
     const container = tab.containerEl as ElementNode;
     const text = collectText(container).join("\n");
     expect(text).toContain("同步目标");
-    expect(text).toContain("选择本次同步读取的个人数据来源。专辑将在后续版本开放。");
+    expect(text).toContain("选择本次同步读取的个人数据来源。");
 
     const dropdown = collectInputs(container).find((input) => input.inputKind === "dropdown");
     const dropdownText = dropdown ? collectText(dropdown).join("\n") : "";
     expect(dropdownText).toContain("收藏");
     expect(dropdownText).toContain("我的笔记");
     expect(dropdownText).toContain("点赞");
-    expect(dropdownText).not.toContain("专辑");
+    expect(dropdownText).toContain("专辑");
     dropdown?.change?.("post");
     await Promise.resolve();
     expect(plugin.settings.activeSyncTarget).toBe("post");
@@ -212,6 +212,58 @@ describe("XhsVaultSyncSettingTab", () => {
     dropdown?.change?.("like");
     await Promise.resolve();
     expect(plugin.settings.activeSyncTarget).toBe("like");
+
+    dropdown?.change?.("album");
+    await Promise.resolve();
+    expect(plugin.settings.activeSyncTarget).toBe("album");
+    expect(saveSettings).toHaveBeenCalledTimes(3);
+  });
+
+  it("提供专辑刷新按钮和空快照提示", () => {
+    const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
+    plugin.settings = createDefaultSettings();
+    const refreshAlbums = vi.fn().mockResolvedValue(undefined);
+    (plugin as unknown as { refreshAlbums: () => Promise<void> }).refreshAlbums = refreshAlbums;
+    const tab = new XhsVaultSyncSettingTab(plugin.app, plugin);
+
+    tab.display();
+
+    const container = tab.containerEl as ElementNode;
+    expect(collectText(container)).toContain("专辑白名单");
+    expect(collectText(container)).toContain("暂无专辑快照，请先刷新专辑列表。");
+    findNodeByText(container, "刷新专辑列表")?.click?.();
+
+    expect(refreshAlbums).toHaveBeenCalledTimes(1);
+  });
+
+  it("展示专辑快照并通过 toggle 更新白名单", async () => {
+    const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
+    plugin.settings = {
+      ...createDefaultSettings(),
+      lastAlbumSnapshot: [
+        { id: "album-a", title: "旅行", noteCount: 12 },
+        { id: "album-b", title: "食谱" }
+      ],
+      albumWhitelist: { "album-a": true }
+    };
+    const saveSettings = vi.spyOn(plugin, "saveSettings").mockResolvedValue(undefined);
+    const tab = new XhsVaultSyncSettingTab(plugin.app, plugin);
+
+    tab.display();
+
+    const container = tab.containerEl as ElementNode;
+    const text = collectText(container).join("\n");
+    expect(text).toContain("旅行（12 条）");
+    expect(text).toContain("食谱");
+
+    const albumToggles = collectInputs(container)
+      .filter((input) => input.inputKind === "toggle")
+      .slice(1, 3);
+    albumToggles[0].change?.(false);
+    albumToggles[1].change?.(true);
+    await Promise.resolve();
+
+    expect(plugin.settings.albumWhitelist).toEqual({ "album-b": true });
     expect(saveSettings).toHaveBeenCalledTimes(2);
   });
 });

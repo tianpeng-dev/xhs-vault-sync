@@ -1,5 +1,6 @@
 import type { SyncLogEntry, SyncStatusSnapshot } from "./sync/status";
 import { createIdleStatus } from "./sync/status";
+import type { XhsAlbum } from "./sync/types";
 
 export type SyncTarget = "bookmark" | "post" | "like" | "album";
 
@@ -30,6 +31,7 @@ export interface XhsVaultSyncSettings {
   syncedIds: Record<string, true>;
   allSynced: Record<string, boolean>;
   albumWhitelist: Record<string, true>;
+  lastAlbumSnapshot: XhsAlbum[];
   bookmarkCateNextCursor: Record<string, string>;
   cateSyncAllBookmark: Record<string, boolean>;
   perAccountState: Record<string, AccountSyncState>;
@@ -74,6 +76,7 @@ export function createDefaultSettings(): XhsVaultSyncSettings {
     syncedIds: {},
     allSynced: {},
     albumWhitelist: {},
+    lastAlbumSnapshot: [],
     bookmarkCateNextCursor: {},
     cateSyncAllBookmark: {},
     perAccountState: {},

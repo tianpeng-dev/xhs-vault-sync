@@ -1,5 +1,5 @@
 import { requestUrl } from "obsidian";
-import type { BookmarkPage, XhsComment, XhsMedia, XhsNote } from "../sync/types";
+import type { BookmarkPage, XhsAlbum, XhsComment, XhsMedia, XhsNote } from "../sync/types";
 import { XHS_HOST } from "./hosts";
 import type { SignManager } from "./sign-manager";
 
@@ -7,6 +7,8 @@ const USER_URL = "/api/sns/web/v2/user/me";
 const BOOKMARK_URL = "/api/sns/web/v2/note/collect/page";
 const USER_POST_URL = "/api/sns/web/v1/user/posted";
 const USER_LIKE_URL = "/api/sns/web/v1/user/liked";
+const USER_BOARD_URL = "/api/sns/web/v1/user/collect/board";
+const USER_BOARD_NOTE_URL = "/api/sns/web/v1/note/collect/board/page";
 const FEED_URL = "/api/sns/web/v1/feed";
 
 function summarizeScalar(value: unknown): string | undefined {
@@ -98,6 +100,31 @@ interface XhsBookmarkResponse {
     cursor?: string;
     has_more?: boolean;
   };
+}
+
+interface XhsBoardResponse {
+  code?: unknown;
+  msg?: unknown;
+  message?: unknown;
+  data?: {
+    boards?: XhsBoardItem[];
+    board_list?: XhsBoardItem[];
+    collects?: XhsBoardItem[];
+    list?: XhsBoardItem[];
+    items?: XhsBoardItem[];
+  } | XhsBoardItem[];
+}
+
+interface XhsBoardItem {
+  id?: string;
+  board_id?: string;
+  collect_id?: string;
+  name?: string;
+  title?: string;
+  collect_name?: string;
+  note_count?: number;
+  noteCount?: number;
+  notes_count?: number;
 }
 
 interface XhsListNoteItem {
@@ -274,6 +301,27 @@ export class XhsApi {
     return this.getUserList("like", USER_LIKE_URL, userId, cursor, pageSize);
   }
 
+  async getUserBoards(userId: string): Promise<XhsAlbum[]> {
+    const query = new URLSearchParams({
+      user_id: userId
+    });
+    const data = (await this.signedGet(`${USER_BOARD_URL}?${query.toString()}`)) as XhsBoardResponse;
+    validateBoardResponse(data);
+    return parseBoardResponse(data);
+  }
+
+  async getBoardNotes(boardId: string, cursor: string, pageSize: number): Promise<BookmarkPage> {
+    const query = new URLSearchParams({
+      board_id: boardId,
+      cursor,
+      num: String(pageSize),
+      image_formats: "jpg,webp,avif"
+    });
+    const data = (await this.signedGet(`${USER_BOARD_NOTE_URL}?${query.toString()}`)) as XhsBookmarkResponse;
+    validateListResponse("album", data);
+    return parseListResponse(data);
+  }
+
   async getNoteDetail(noteId: string, xsecToken: string): Promise<XhsNote | null> {
     const body = {
       source_note_id: noteId,
@@ -387,13 +435,43 @@ export class XhsApi {
 }
 
 function validateListResponse(
-  listName: "bookmark" | "post" | "like",
+  listName: "bookmark" | "post" | "like" | "album",
   data: XhsBookmarkResponse
 ): void {
   const message = summarizeScalar(data.msg || data.message);
   if (!Array.isArray(data.data?.notes) && (message || isErrorCode(data.code))) {
     throw new Error(`XHS ${listName} API rejected: ${message || summarizeScalar(data.code) || "unknown error"}`);
   }
+}
+
+function validateBoardResponse(data: XhsBoardResponse): void {
+  const boards = parseRawBoards(data);
+  const message = summarizeScalar(data.msg || data.message);
+  if (!Array.isArray(boards) && (message || isErrorCode(data.code))) {
+    throw new Error(`XHS board API rejected: ${message || summarizeScalar(data.code) || "unknown error"}`);
+  }
+}
+
+function parseBoardResponse(data: XhsBoardResponse): XhsAlbum[] {
+  const rawBoards = parseRawBoards(data) ?? [];
+  return rawBoards
+    .map((item) => ({
+      id: item.board_id ?? item.id ?? item.collect_id ?? "",
+      title: item.name ?? item.title ?? item.collect_name ?? "",
+      noteCount: parseNoteCount(item.note_count ?? item.noteCount ?? item.notes_count)
+    }))
+    .filter((item) => item.id && item.title);
+}
+
+function parseRawBoards(data: XhsBoardResponse): XhsBoardItem[] | undefined {
+  if (Array.isArray(data.data)) return data.data;
+  return data.data?.boards ?? data.data?.board_list ?? data.data?.collects ?? data.data?.list ?? data.data?.items;
+}
+
+function parseNoteCount(value: unknown): number | undefined {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  if (typeof parsed !== "number") return undefined;
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function parseListResponse(data: XhsBookmarkResponse): BookmarkPage {

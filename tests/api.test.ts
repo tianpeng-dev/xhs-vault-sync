@@ -229,6 +229,98 @@ describe("XhsApi", () => {
     );
   });
 
+  it("requests user boards and parses board aliases", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            boards: [
+              { board_id: "board-a", name: "旅行", note_count: 12 },
+              { id: "board-b", title: "食谱", noteCount: 3 }
+            ]
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserBoards("u1")).resolves.toEqual([
+      { id: "board-a", title: "旅行", noteCount: 12 },
+      { id: "board-b", title: "食谱", noteCount: 3 }
+    ]);
+
+    expect(requests[0]?.url).toContain("board");
+    expect(requests[0]?.url).toContain("user_id=u1");
+  });
+
+  it("requests board notes and keeps album metadata on list items", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                note_card: {
+                  note_id: "album-note",
+                  xsec_token: "album-token",
+                  display_title: "专辑笔记",
+                  user: { nickname: "作者" }
+                }
+              }
+            ],
+            cursor: "album-cursor",
+            has_more: true
+          }
+        }
+      };
+    });
+
+    await expect(api.getBoardNotes("board-a", "cursor-a", 7)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "album-note",
+          xsecToken: "album-token",
+          title: "专辑笔记",
+          author: "作者"
+        }
+      ],
+      cursor: "album-cursor",
+      hasMore: true
+    });
+
+    expect(requests[0]?.url).toContain("board");
+    expect(requests[0]?.url).toContain("board_id=board-a");
+    expect(requests[0]?.url).toContain("cursor=cursor-a");
+    expect(requests[0]?.url).toContain("num=7");
+  });
+
+  it("rejects abnormal board note API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        msg: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getBoardNotes("board-a", "", 30)).rejects.toThrow(
+      "XHS album API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
   it("rejects abnormal bookmark API responses instead of falling back to page-only items", async () => {
     const signer = {
       signedFetchJson: vi.fn().mockResolvedValue({

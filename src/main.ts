@@ -14,8 +14,11 @@ import { OnboardingModal } from "./ui/onboarding-modal";
 import { XhsVaultSyncSettingTab } from "./ui/settings-tab";
 import { SyncStatusModal } from "./ui/status-modal";
 import type { SyncTarget } from "./settings";
+import { XhsApi } from "./xhs/api";
+import { readXhsCookieHeader } from "./xhs/cookies";
+import { SignManager } from "./xhs/sign-manager";
 
-const SUPPORTED_SYNC_TARGETS: SyncTarget[] = ["bookmark", "post", "like"];
+const SUPPORTED_SYNC_TARGETS: SyncTarget[] = ["bookmark", "post", "like", "album"];
 
 function isSupportedSyncTarget(value: unknown): value is SyncTarget {
   return SUPPORTED_SYNC_TARGETS.includes(value as SyncTarget);
@@ -93,6 +96,7 @@ export default class XhsVaultSyncPlugin extends Plugin {
       downloadVideos: loaded?.downloadVideos ?? defaults.downloadVideos,
       allSynced: { ...(loaded?.allSynced ?? {}) },
       albumWhitelist: { ...(loaded?.albumWhitelist ?? {}) },
+      lastAlbumSnapshot: [...(loaded?.lastAlbumSnapshot ?? [])],
       bookmarkCateNextCursor: { ...(loaded?.bookmarkCateNextCursor ?? {}) },
       cateSyncAllBookmark: { ...(loaded?.cateSyncAllBookmark ?? {}) },
       perAccountState: { ...(loaded?.perAccountState ?? {}) },
@@ -188,6 +192,49 @@ export default class XhsVaultSyncPlugin extends Plugin {
       await this.syncEngine?.syncBookmarks();
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  async refreshAlbums(): Promise<void> {
+    if (!this.settings.a1Cookie) {
+      new Notice("请先登录小红书，再刷新专辑列表。");
+      return;
+    }
+
+    const signer = new SignManager();
+    try {
+      await this.updateSyncStatus({
+        phase: "collecting",
+        message: "正在刷新专辑列表"
+      });
+      await signer.initWebview();
+      const visibleCookies = `a1=${this.settings.a1Cookie}`;
+      const cookies = await readXhsCookieHeader(visibleCookies);
+      this.settings.cookies = "";
+      const api = new XhsApi(signer, cookies);
+      const user = await api.getCurrentUser();
+      this.settings.userId = user.userId;
+      this.settings.userName = user.userName;
+      this.settings.lastAlbumSnapshot = await api.getUserBoards(user.userId);
+      await this.saveSettings();
+      await this.updateSyncStatus({
+        phase: "idle",
+        message: `已刷新 ${this.settings.lastAlbumSnapshot.length} 个专辑`
+      });
+      new Notice(`已刷新 ${this.settings.lastAlbumSnapshot.length} 个专辑。`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const safeMessage = sanitizeStatusMessage(message);
+      this.settings.lastSyncError = safeMessage;
+      await this.updateSyncStatus({
+        phase: "failed",
+        message: safeMessage,
+        lastError: safeMessage
+      });
+      new Notice(`刷新专辑列表失败：${safeMessage}`);
+      throw error;
+    } finally {
+      signer.destroy();
     }
   }
 
