@@ -1,7 +1,19 @@
 import type { SyncLogEntry, SyncStatusSnapshot } from "./sync/status";
 import { createIdleStatus } from "./sync/status";
+import type { XhsAlbum } from "./sync/types";
 
-export type SyncTarget = "bookmark";
+export type SyncTarget = "bookmark" | "post" | "like" | "album";
+
+export interface AccountSyncState {
+  syncCursors: Record<string, string>;
+  syncedIds: Record<string, true>;
+  allSynced: Record<string, boolean>;
+  albumWhitelist: Record<string, true>;
+  lastAlbumSnapshot: XhsAlbum[];
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
+  nextSyncIndex: number;
+}
 
 export interface XhsVaultSyncSettings {
   rootFolder: string;
@@ -9,13 +21,26 @@ export interface XhsVaultSyncSettings {
   syncIntervalMinutes: number;
   syncBatchSize: number;
   activeSyncTarget: SyncTarget;
+  syncTargets: SyncTarget[];
   downloadImages: boolean;
+  downloadVideos: boolean;
+  enableAiClassify: boolean;
+  openaiApiKey: string;
+  openaiBaseUrl: string;
+  openaiModel: string;
+  categories: string[];
   cookies: string;
   a1Cookie: string;
   userId: string;
   userName: string;
   syncCursors: Record<string, string>;
   syncedIds: Record<string, true>;
+  allSynced: Record<string, boolean>;
+  albumWhitelist: Record<string, true>;
+  lastAlbumSnapshot: XhsAlbum[];
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
+  perAccountState: Record<string, AccountSyncState>;
   nextSyncIndex: number;
   lastSyncAt: number;
   hasSeenOnboarding: boolean;
@@ -46,13 +71,26 @@ export function createDefaultSettings(): XhsVaultSyncSettings {
     syncIntervalMinutes: 10,
     syncBatchSize: 5,
     activeSyncTarget: "bookmark",
+    syncTargets: ["bookmark"],
     downloadImages: true,
+    downloadVideos: false,
+    enableAiClassify: false,
+    openaiApiKey: "",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    openaiModel: "gpt-4o-mini",
+    categories: [],
     cookies: "",
     a1Cookie: "",
     userId: "",
     userName: "",
     syncCursors: {},
     syncedIds: {},
+    allSynced: {},
+    albumWhitelist: {},
+    lastAlbumSnapshot: [],
+    bookmarkCateNextCursor: {},
+    cateSyncAllBookmark: {},
+    perAccountState: {},
     nextSyncIndex: 1,
     lastSyncAt: 0,
     hasSeenOnboarding: false,

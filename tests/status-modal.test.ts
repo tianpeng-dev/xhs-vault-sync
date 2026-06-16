@@ -21,6 +21,9 @@ describe("SyncStatusModal", () => {
     plugin.settings = {
       ...createDefaultSettings(),
       rootFolder: "RedNote/收藏",
+      userId: "user-1",
+      userName: "测试用户",
+      activeSyncTarget: "album",
       lastSyncAt: new Date("2026-06-13T12:00:00Z").getTime(),
       syncedIds: {
         note1: true,
@@ -34,6 +37,8 @@ describe("SyncStatusModal", () => {
         discoveredCount: 12,
         savedCount: 3,
         skippedCount: 9,
+        currentIndex: 8,
+        totalCount: 12,
         lastError: "token=secret_token_value_123456"
       },
       lastBookmarkDebug: {
@@ -67,6 +72,11 @@ describe("SyncStatusModal", () => {
     expect(text).toContain("XHS Vault Sync 状态");
     expect(text).toContain("小红书：同步完成（已保存 3 条，已跳过 9 条）");
     expect(text).toContain("上次同步：");
+    expect(text).toContain("当前账号：测试用户");
+    expect(text).toContain("同步目标：专辑");
+    expect(text).toContain("进度：8 / 12");
+    expect(text).toContain("发现：12 条，保存：3 条，跳过：9 条");
+    expect(text).toContain("最近错误：token=[redacted]");
     expect(text).toContain("已同步：3 条");
     expect(text).toContain("保存目录：RedNote/收藏");
     expect(text).toContain("最近采集摘要");

@@ -99,6 +99,228 @@ describe("XhsApi", () => {
     expect(requests[0]?.url).toContain("num=5");
   });
 
+  it("requests user posted notes and parses note ids with xsec tokens", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                note_id: "posted-note",
+                xsec_token: "posted-token",
+                display_title: "我的笔记",
+                user: { nickname: "作者" },
+                cover: { url_default: "https://img.example.com/posted.jpg" },
+                type: "normal"
+              }
+            ],
+            cursor: "posted-cursor",
+            has_more: true
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserPosts("u1", "cursor-a", 5)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "posted-note",
+          xsecToken: "posted-token",
+          title: "我的笔记",
+          author: "作者",
+          coverUrl: "https://img.example.com/posted.jpg",
+          noteType: "normal"
+        }
+      ],
+      cursor: "posted-cursor",
+      hasMore: true
+    });
+
+    expect(requests[0]?.url).toContain("user");
+    expect(requests[0]?.url).toContain("posted");
+    expect(requests[0]?.url).toContain("user_id=u1");
+    expect(requests[0]?.url).toContain("num=5");
+  });
+
+  it("requests user liked notes and parses note ids with xsec tokens", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                id: "liked-note",
+                xsec_token: "liked-token",
+                title: "点赞笔记",
+                author: { nickname: "点赞作者" },
+                cover_url: "https://img.example.com/liked.jpg",
+                note_type: "video"
+              }
+            ],
+            cursor: "liked-cursor",
+            has_more: false
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserLikes("u1", "", 8)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "liked-note",
+          xsecToken: "liked-token",
+          title: "点赞笔记",
+          author: "点赞作者",
+          coverUrl: "https://img.example.com/liked.jpg",
+          noteType: "video"
+        }
+      ],
+      cursor: "liked-cursor",
+      hasMore: false
+    });
+
+    expect(requests[0]?.url).toContain("user");
+    expect(requests[0]?.url).toContain("liked");
+    expect(requests[0]?.url).toContain("user_id=u1");
+    expect(requests[0]?.url).toContain("num=8");
+  });
+
+  it("rejects abnormal user post API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        msg: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getUserPosts("u1", "", 30)).rejects.toThrow(
+      "XHS post API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
+  it("rejects abnormal user like API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        message: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getUserLikes("u1", "", 30)).rejects.toThrow(
+      "XHS like API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
+  it("requests user boards and parses board aliases", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            boards: [
+              { board_id: "board-a", name: "旅行", note_count: 12 },
+              { id: "board-b", title: "食谱", noteCount: 3 }
+            ]
+          }
+        }
+      };
+    });
+
+    await expect(api.getUserBoards("u1")).resolves.toEqual([
+      { id: "board-a", title: "旅行", noteCount: 12 },
+      { id: "board-b", title: "食谱", noteCount: 3 }
+    ]);
+
+    expect(requests[0]?.url).toContain("board");
+    expect(requests[0]?.url).toContain("user_id=u1");
+  });
+
+  it("requests board notes and keeps album metadata on list items", async () => {
+    const signer = { sign: vi.fn().mockResolvedValue(signedHeaders) };
+    const api = new XhsApi(signer as never, "a1=session");
+    const requests: Array<{ url?: string }> = [];
+
+    __setRequestUrlMock(async (options) => {
+      requests.push(options as { url?: string });
+      return {
+        status: 200,
+        json: {
+          data: {
+            notes: [
+              {
+                note_card: {
+                  note_id: "album-note",
+                  xsec_token: "album-token",
+                  display_title: "专辑笔记",
+                  user: { nickname: "作者" }
+                }
+              }
+            ],
+            cursor: "album-cursor",
+            has_more: true
+          }
+        }
+      };
+    });
+
+    await expect(api.getBoardNotes("board-a", "cursor-a", 7)).resolves.toMatchObject({
+      notes: [
+        {
+          noteId: "album-note",
+          xsecToken: "album-token",
+          title: "专辑笔记",
+          author: "作者"
+        }
+      ],
+      cursor: "album-cursor",
+      hasMore: true
+    });
+
+    expect(requests[0]?.url).toContain("board");
+    expect(requests[0]?.url).toContain("board_id=board-a");
+    expect(requests[0]?.url).toContain("cursor=cursor-a");
+    expect(requests[0]?.url).toContain("num=7");
+  });
+
+  it("rejects abnormal board note API responses instead of treating them as an empty page", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        code: 300011,
+        msg: "Account abnormal. Switch account and retry.",
+        success: false,
+        data: {}
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getBoardNotes("board-a", "", 30)).rejects.toThrow(
+      "XHS album API rejected: Account abnormal. Switch account and retry."
+    );
+  });
+
   it("rejects abnormal bookmark API responses instead of falling back to page-only items", async () => {
     const signer = {
       signedFetchJson: vi.fn().mockResolvedValue({
@@ -151,6 +373,46 @@ describe("XhsApi", () => {
         { type: "image", url: "https://img.example.com/2.jpg" }
       ],
       comments: [{ author: "评论者", content: "第一条评论" }]
+    });
+  });
+
+  it("parses video media from feed note detail while keeping images", async () => {
+    const signer = {
+      signedFetchJson: vi.fn().mockResolvedValue({
+        data: {
+          items: [
+            {
+              note_card: {
+                note_id: "note-video",
+                display_title: "视频标题",
+                desc: "视频正文",
+                image_list: [{ url_default: "https://img.example.com/cover.jpg" }],
+                video_info: {
+                  media: {
+                    stream: {
+                      h264: [
+                        {
+                          master_url: "https://video.example.com/main.mp4",
+                          backup_urls: ["https://video.example.com/backup.mp4"]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      })
+    };
+    const api = new XhsApi(signer as never, "a1=session");
+
+    await expect(api.getNoteDetail("note-video", "token")).resolves.toMatchObject({
+      id: "note-video",
+      media: [
+        { type: "image", url: "https://img.example.com/cover.jpg", ext: "jpg" },
+        { type: "video", url: "https://video.example.com/main.mp4", ext: "mp4" }
+      ]
     });
   });
 

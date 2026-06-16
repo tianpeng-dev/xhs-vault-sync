@@ -8,11 +8,33 @@ import {
   type SyncPhase,
   type SyncStatusSnapshot
 } from "./sync/status";
+import { switchAccountSyncState } from "./sync/account-state";
 import { SyncEngine } from "./sync/sync-engine";
 import { LoginModal } from "./ui/login-modal";
 import { OnboardingModal } from "./ui/onboarding-modal";
 import { XhsVaultSyncSettingTab } from "./ui/settings-tab";
 import { SyncStatusModal } from "./ui/status-modal";
+import type { SyncTarget } from "./settings";
+import { XhsApi } from "./xhs/api";
+import { readXhsCookieHeader } from "./xhs/cookies";
+import { SignManager } from "./xhs/sign-manager";
+
+const SUPPORTED_SYNC_TARGETS: SyncTarget[] = ["bookmark", "post", "like", "album"];
+
+function isSupportedSyncTarget(value: unknown): value is SyncTarget {
+  return SUPPORTED_SYNC_TARGETS.includes(value as SyncTarget);
+}
+
+function normalizeActiveSyncTarget(value: unknown): SyncTarget {
+  return isSupportedSyncTarget(value) ? value : "bookmark";
+}
+
+function normalizeSyncTargets(values: unknown, fallback: SyncTarget[]): SyncTarget[] {
+  const filtered = Array.isArray(values)
+    ? values.filter(isSupportedSyncTarget)
+    : fallback.filter(isSupportedSyncTarget);
+  return filtered.length ? filtered : ["bookmark"];
+}
 
 export default class XhsVaultSyncPlugin extends Plugin {
   settings: XhsVaultSyncSettings = createDefaultSettings();
@@ -68,8 +90,22 @@ export default class XhsVaultSyncPlugin extends Plugin {
 
     this.settings = Object.assign(defaults, loaded, {
       cookies: "",
+      activeSyncTarget: normalizeActiveSyncTarget(loaded?.activeSyncTarget),
       syncCursors: { ...(loaded?.syncCursors ?? {}) },
       syncedIds: { ...(loaded?.syncedIds ?? {}) },
+      syncTargets: normalizeSyncTargets(loaded?.syncTargets, defaults.syncTargets),
+      downloadVideos: loaded?.downloadVideos ?? defaults.downloadVideos,
+      enableAiClassify: loaded?.enableAiClassify ?? defaults.enableAiClassify,
+      openaiApiKey: loaded?.openaiApiKey ?? defaults.openaiApiKey,
+      openaiBaseUrl: loaded?.openaiBaseUrl ?? defaults.openaiBaseUrl,
+      openaiModel: loaded?.openaiModel ?? defaults.openaiModel,
+      categories: Array.isArray(loaded?.categories) ? loaded.categories : defaults.categories,
+      allSynced: { ...(loaded?.allSynced ?? {}) },
+      albumWhitelist: { ...(loaded?.albumWhitelist ?? {}) },
+      lastAlbumSnapshot: [...(loaded?.lastAlbumSnapshot ?? [])],
+      bookmarkCateNextCursor: { ...(loaded?.bookmarkCateNextCursor ?? {}) },
+      cateSyncAllBookmark: { ...(loaded?.cateSyncAllBookmark ?? {}) },
+      perAccountState: { ...(loaded?.perAccountState ?? {}) },
       syncStatusSnapshot: {
         ...defaults.syncStatusSnapshot,
         ...(loaded?.syncStatusSnapshot ?? {}),
@@ -162,6 +198,48 @@ export default class XhsVaultSyncPlugin extends Plugin {
       await this.syncEngine?.syncBookmarks();
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  async refreshAlbums(): Promise<void> {
+    if (!this.settings.a1Cookie) {
+      new Notice("请先登录小红书，再刷新专辑列表。");
+      return;
+    }
+
+    const signer = new SignManager();
+    try {
+      await this.updateSyncStatus({
+        phase: "collecting",
+        message: "正在刷新专辑列表"
+      });
+      await signer.initWebview();
+      const visibleCookies = `a1=${this.settings.a1Cookie}`;
+      const cookies = await readXhsCookieHeader(visibleCookies);
+      this.settings.cookies = "";
+      const api = new XhsApi(signer, cookies);
+      const user = await api.getCurrentUser();
+      switchAccountSyncState(this.settings, user);
+      this.settings.lastAlbumSnapshot = await api.getUserBoards(user.userId);
+      await this.saveSettings();
+      await this.updateSyncStatus({
+        phase: "idle",
+        message: `已刷新 ${this.settings.lastAlbumSnapshot.length} 个专辑`
+      });
+      new Notice(`已刷新 ${this.settings.lastAlbumSnapshot.length} 个专辑。`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const safeMessage = sanitizeStatusMessage(message);
+      this.settings.lastSyncError = safeMessage;
+      await this.updateSyncStatus({
+        phase: "failed",
+        message: safeMessage,
+        lastError: safeMessage
+      });
+      new Notice(`刷新专辑列表失败：${safeMessage}`);
+      throw error;
+    } finally {
+      signer.destroy();
     }
   }
 

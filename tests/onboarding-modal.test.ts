@@ -31,7 +31,7 @@ async function flushAsyncClick(): Promise<void> {
 }
 
 describe("OnboardingModal", () => {
-  it("展示首次同步的 4 步引导并标记已看", async () => {
+  it("展示首次同步的 6 步引导并标记已看", async () => {
     const plugin = new XhsVaultSyncPlugin({} as never, {} as never);
     plugin.settings = createDefaultSettings();
     const saveSettings = vi.spyOn(plugin, "saveSettings").mockResolvedValue(undefined);
@@ -44,7 +44,9 @@ describe("OnboardingModal", () => {
     expect(text).toContain("开始同步小红书收藏");
     expect(text).toContain("点击“登录小红书”，在弹窗中完成登录。");
     expect(text).toContain("在登录弹窗点击完成登录按钮（I am logged in）。");
-    expect(text).toContain("点击“立即同步”，插件会把收藏保存到 RedNote。");
+    expect(text).toContain("在设置里选择同步目标：收藏、我的笔记、点赞或专辑。");
+    expect(text).toContain("如果选择专辑，先点击“刷新专辑列表”，再勾选要同步的专辑。");
+    expect(text).toContain("点击“立即同步”，插件会把内容保存到 RedNote。");
     expect(text).toContain("同步过程中可以在状态栏或“查看状态”里看进度。");
     expect(text).toContain("登录小红书");
     expect(text).toContain("稍后再说");

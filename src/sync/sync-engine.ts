@@ -1,10 +1,14 @@
-import { Notice, requestUrl } from "obsidian";
+import { Notice } from "obsidian";
 import type XhsVaultSyncPlugin from "../main";
-import type { BookmarkPage, XhsComment, XhsNote } from "./types";
+import type { SyncTarget, XhsVaultSyncSettings } from "../settings";
+import type { BookmarkPage, XhsAlbum, XhsComment, XhsNote } from "./types";
 import { VaultWriter } from "../vault/vault-writer";
 import { XhsApi } from "../xhs/api";
 import { readXhsCookieHeader } from "../xhs/cookies";
 import { SignManager } from "../xhs/sign-manager";
+import { switchAccountSyncState } from "./account-state";
+import { classifyNoteCategory } from "./ai-classifier";
+import { downloadMedia } from "./media-downloader";
 import { sanitizeStatusMessage } from "./status";
 
 export function shouldSyncNote(syncedIds: Record<string, true>, noteId: string): boolean {
@@ -46,26 +50,31 @@ export class SyncEngine {
       const api = new XhsApi(signer, cookies);
       const writer = new VaultWriter(this.plugin.app, this.plugin.settings.rootFolder);
       const user = await api.getCurrentUser();
-      this.plugin.settings.userId = user.userId;
-      this.plugin.settings.userName = user.userName;
+      switchAccountSyncState(this.plugin.settings, user);
+
+      const activeTarget = this.plugin.settings.activeSyncTarget ?? "bookmark";
+      const targetLabel = syncTargetLabel(activeTarget);
 
       await this.plugin.updateSyncStatus({
         phase: "collecting",
-        message: "正在读取收藏",
+        message: `正在读取${targetLabel}`,
         discoveredCount: 0,
         savedCount: 0,
         skippedCount: 0
       });
 
       const pageSize = Math.max(30, this.plugin.settings.syncBatchSize);
-      const apiPage = await collectApiBookmarksSafely(
+      const albumContext = activeTarget === "album"
+        ? await collectAlbumPage(api, user.userId, this.plugin.settings, pageSize)
+        : null;
+      const page = albumContext?.page ?? await collectListByTarget(
+        activeTarget,
         api,
+        signer,
         user.userId,
-        this.plugin.settings.syncCursors.bookmark ?? "",
+        this.plugin.settings.syncCursors[activeTarget] ?? "",
         pageSize
       );
-      const collectedPage = await collectVisibleBookmarksSafely(signer, user.userId, pageSize);
-      const page = mergeBookmarkPages(apiPage, collectedPage);
       this.plugin.settings.lastBookmarkDebug = page.debug;
       let saved = 0;
       let skipped = 0;
@@ -84,7 +93,8 @@ export class SyncEngine {
       });
 
       for (const item of page.notes) {
-        if (!shouldSyncNote(this.plugin.settings.syncedIds, item.noteId)) {
+        const syncedKey = syncTargetNoteKey(activeTarget, item);
+        if (!shouldSyncNote(this.plugin.settings.syncedIds, syncedKey)) {
           skipped++;
           continue;
         }
@@ -118,20 +128,25 @@ export class SyncEngine {
           continue;
         }
         detail.comments = filterWenYiWenAnswers(detail.comments);
+        detail.syncTarget = activeTarget;
+        if (activeTarget === "album") {
+          detail.albumId = item.albumId ?? albumContext?.album?.id;
+          detail.albumTitle = item.albumTitle ?? albumContext?.album?.title;
+        }
+        await classifyDetailIfEnabled(this.plugin, detail);
 
-        if (this.plugin.settings.downloadImages) {
-          for (let index = 0; index < detail.media.length; index++) {
-            const media = detail.media[index];
-            if (media.type !== "image") continue;
-            const response = await requestUrl({ url: media.url, method: "GET", throw: false });
-            if (response.status >= 200 && response.status < 300) {
-              media.localPath = await writer.writeMedia(
-                detail.id,
-                index + 1,
-                response.arrayBuffer,
-                media.ext ?? "jpg"
-              );
-            }
+        for (let index = 0; index < detail.media.length; index++) {
+          const media = detail.media[index];
+          if (media.type === "image" && !this.plugin.settings.downloadImages) continue;
+          if (media.type === "video" && !this.plugin.settings.downloadVideos) continue;
+
+          const result = await downloadMedia(media);
+          if (result.data) {
+            media.localPath = media.type === "video"
+              ? await writer.writeVideo(detail.id, index + 1, result.data, result.ext)
+              : await writer.writeMedia(detail.id, index + 1, result.data, result.ext);
+          } else if (result.error) {
+            media.downloadError = result.error;
           }
         }
 
@@ -140,7 +155,7 @@ export class SyncEngine {
         detail.syncedAt = new Date().toISOString();
         await writer.writeNote(detail);
         this.plugin.settings.nextSyncIndex = syncIndex + 1;
-        markNoteSynced(this.plugin.settings.syncedIds, item.noteId);
+        markNoteSynced(this.plugin.settings.syncedIds, syncedKey);
         saved++;
         if (saved >= this.plugin.settings.syncBatchSize) {
           reachedBatchLimit = true;
@@ -148,8 +163,13 @@ export class SyncEngine {
         }
       }
 
-      if (!reachedBatchLimit) {
-        this.plugin.settings.syncCursors.bookmark = page.cursor;
+      if (!reachedBatchLimit && albumContext?.album) {
+        this.plugin.settings.bookmarkCateNextCursor[albumContext.album.id] = page.cursor;
+        if (!page.hasMore) {
+          this.plugin.settings.cateSyncAllBookmark[albumContext.album.id] = true;
+        }
+      } else if (!reachedBatchLimit) {
+        this.plugin.settings.syncCursors[activeTarget] = page.cursor;
       }
       this.plugin.settings.lastSyncAt = Date.now();
       this.plugin.settings.lastSyncError = "";
@@ -181,6 +201,30 @@ export class SyncEngine {
       signer.destroy();
       this.isSyncing = false;
     }
+  }
+}
+
+async function classifyDetailIfEnabled(
+  plugin: XhsVaultSyncPlugin,
+  detail: XhsNote
+): Promise<void> {
+  const settings = plugin.settings;
+  if (!settings.enableAiClassify || !settings.openaiApiKey || !settings.categories.length) return;
+
+  try {
+    const category = await classifyNoteCategory(detail, {
+      apiKey: settings.openaiApiKey,
+      baseUrl: settings.openaiBaseUrl,
+      model: settings.openaiModel,
+      categories: settings.categories
+    });
+    if (category) detail.category = category;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await plugin.updateSyncStatus({
+      phase: "saving",
+      message: `AI 分类失败，继续保存：${sanitizeStatusMessage(message)}`
+    });
   }
 }
 
@@ -268,6 +312,93 @@ function mergeBookmarkPages(apiPage: BookmarkPage, collectedPage: BookmarkPage):
         .join(","),
       itemKeySummary: collectedPage.debug.itemKeySummary || apiPage.debug.itemKeySummary,
       cardKeySummary: collectedPage.debug.cardKeySummary || apiPage.debug.cardKeySummary
+    }
+  };
+}
+
+function syncTargetLabel(target: SyncTarget): string {
+  if (target === "post") return "我的笔记";
+  if (target === "like") return "点赞";
+  if (target === "album") return "专辑";
+  return "收藏";
+}
+
+function syncTargetNoteKey(target: SyncTarget, item: { noteId: string; albumId?: string }): string {
+  if (target === "bookmark") return item.noteId;
+  if (target === "album") return `album:${item.albumId ?? ""}:${item.noteId}`;
+  return `${target}:${item.noteId}`;
+}
+
+async function collectListByTarget(
+  target: SyncTarget,
+  api: XhsApi,
+  signer: SignManager,
+  userId: string,
+  cursor: string,
+  pageSize: number
+): Promise<BookmarkPage> {
+  if (target === "bookmark") {
+    const apiPage = await collectApiBookmarksSafely(api, userId, cursor, pageSize);
+    const collectedPage = await collectVisibleBookmarksSafely(signer, userId, pageSize);
+    return mergeBookmarkPages(apiPage, collectedPage);
+  }
+  if (target === "post") return api.getUserPosts(userId, cursor, pageSize);
+  if (target === "like") return api.getUserLikes(userId, cursor, pageSize);
+  throw new Error("专辑同步尚未实现");
+}
+
+async function collectAlbumPage(
+  api: XhsApi,
+  userId: string,
+  settings: XhsVaultSyncSettings,
+  pageSize: number
+): Promise<{ album?: XhsAlbum; page: BookmarkPage }> {
+  const albums = await api.getUserBoards(userId);
+  settings.lastAlbumSnapshot = albums;
+  const whitelistIds = Object.keys(settings.albumWhitelist).filter((id) => settings.albumWhitelist[id]);
+  if (!whitelistIds.length) throw new Error("请先在设置中选择至少一个专辑");
+
+  const albumsById = new Map(albums.map((album) => [album.id, album]));
+  const album = whitelistIds
+    .map((id) => albumsById.get(id))
+    .find((candidate): candidate is XhsAlbum =>
+      Boolean(candidate && settings.cateSyncAllBookmark[candidate.id] !== true)
+    );
+  if (!album) {
+    return { page: createEmptyPage("album-complete") };
+  }
+
+  const page = await api.getBoardNotes(
+    album.id,
+    settings.bookmarkCateNextCursor[album.id] ?? "",
+    pageSize
+  );
+  return {
+    album,
+    page: {
+      ...page,
+      notes: page.notes.map((item) => ({
+        ...item,
+        albumId: album.id,
+        albumTitle: album.title
+      }))
+    }
+  };
+}
+
+function createEmptyPage(source: string): BookmarkPage {
+  return {
+    notes: [],
+    cursor: "",
+    hasMore: false,
+    debug: {
+      topLevelKeys: [source],
+      dataKeys: [],
+      noteCount: 0,
+      hasMore: false,
+      cursorPresent: false,
+      codeType: source,
+      messagePresent: false
     }
   };
 }

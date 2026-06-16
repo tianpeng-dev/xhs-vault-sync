@@ -1,8 +1,11 @@
+import type { SyncTarget } from "../settings";
+
 export interface XhsMedia {
   url: string;
   type: "image" | "video";
   ext?: string;
   localPath?: string;
+  downloadError?: string;
 }
 
 export interface XhsComment {
@@ -10,6 +13,12 @@ export interface XhsComment {
   content: string;
   createdAt?: string;
   likes?: string;
+}
+
+export interface XhsAlbum {
+  id: string;
+  title: string;
+  noteCount?: number;
 }
 
 export interface XhsNote {
@@ -23,6 +32,10 @@ export interface XhsNote {
   syncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  category?: string;
+  syncTarget?: SyncTarget;
+  albumId?: string;
+  albumTitle?: string;
   media: XhsMedia[];
   comments?: XhsComment[];
 }
@@ -35,6 +48,8 @@ export interface BookmarkPage {
     author?: string;
     coverUrl?: string;
     noteType?: string;
+    albumId?: string;
+    albumTitle?: string;
   }>;
   cursor: string;
   hasMore: boolean;

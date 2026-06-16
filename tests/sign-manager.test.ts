@@ -17,4 +17,17 @@ describe("SignManager", () => {
     expect(script).toContain("XMLHttpRequest.prototype.open");
     expect(script).toContain("收藏");
   });
+
+  it("builds note detail collector script with video fallback extraction", () => {
+    const script = new SignManager().buildNoteDetailCollectorScript({
+      noteId: "note-video",
+      xsecToken: "token"
+    });
+
+    expect(script).toContain("video[src]");
+    expect(script).toContain("source[src]");
+    expect(script).toContain("videoInfo");
+    expect(script).toContain("video_info");
+    expect(script).toContain("mp4");
+  });
 });

@@ -6,6 +6,7 @@ import {
   SyncEngine,
   userFacingSyncError
 } from "../src/sync/sync-engine";
+import { __setRequestUrlMock } from "./mocks/obsidian";
 
 const syncEngineMocks = vi.hoisted(() => {
   const signer = {
@@ -17,17 +18,23 @@ const syncEngineMocks = vi.hoisted(() => {
   const api = {
     getCurrentUser: vi.fn(),
     getBookmarks: vi.fn(),
+    getUserPosts: vi.fn(),
+    getUserLikes: vi.fn(),
+    getUserBoards: vi.fn(),
+    getBoardNotes: vi.fn(),
     getNoteDetail: vi.fn()
   };
   const writer = {
     writeNote: vi.fn(),
-    writeMedia: vi.fn()
+    writeMedia: vi.fn(),
+    writeVideo: vi.fn()
   };
 
   return {
     signer,
     api,
     writer,
+    classifyNoteCategory: vi.fn(),
     readXhsCookieHeader: vi.fn()
   };
 });
@@ -54,10 +61,15 @@ vi.mock("../src/xhs/cookies", () => ({
   readXhsCookieHeader: syncEngineMocks.readXhsCookieHeader
 }));
 
+vi.mock("../src/sync/ai-classifier", () => ({
+  classifyNoteCategory: syncEngineMocks.classifyNoteCategory
+}));
+
 describe("sync state helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     syncEngineMocks.readXhsCookieHeader.mockResolvedValue("a1=session");
+    syncEngineMocks.classifyNoteCategory.mockResolvedValue(null);
     syncEngineMocks.signer.initWebview.mockResolvedValue(undefined);
     syncEngineMocks.signer.collectNoteDetail.mockResolvedValue(null);
     syncEngineMocks.signer.collectBookmarks.mockResolvedValue({
@@ -100,6 +112,52 @@ describe("sync state helpers", () => {
         messagePresent: false
       }
     });
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "post-note", xsecToken: "post-token" }],
+      cursor: "post-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+    syncEngineMocks.api.getUserLikes.mockResolvedValue({
+      notes: [{ noteId: "like-note", xsecToken: "like-token" }],
+      cursor: "like-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+    syncEngineMocks.api.getUserBoards.mockResolvedValue([
+      { id: "album-a", title: "旅行", noteCount: 2 },
+      { id: "album-b", title: "食谱", noteCount: 1 }
+    ]);
+    syncEngineMocks.api.getBoardNotes.mockResolvedValue({
+      notes: [{ noteId: "album-note", xsecToken: "album-token" }],
+      cursor: "album-next-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
     syncEngineMocks.api.getNoteDetail.mockImplementation((noteId: string) =>
       Promise.resolve({
         id: noteId,
@@ -114,6 +172,8 @@ describe("sync state helpers", () => {
     );
     syncEngineMocks.writer.writeNote.mockResolvedValue(undefined);
     syncEngineMocks.writer.writeMedia.mockResolvedValue("media-path");
+    syncEngineMocks.writer.writeVideo.mockResolvedValue("video-path");
+    __setRequestUrlMock(null);
   });
 
   it("skips already synced note ids", () => {
@@ -434,6 +494,267 @@ describe("sync state helpers", () => {
     expect(plugin.settings.syncedIds).toEqual({ "page-note": true });
   });
 
+  it("uses user posts when active sync target is post and writes the target into note detail", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncCursors: { post: "post-cursor" },
+      syncedIds: {},
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserPosts).toHaveBeenCalledWith("user1", "post-cursor", 30);
+    expect(syncEngineMocks.api.getBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.signer.collectBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("post-note", "post-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "post-note",
+        syncTarget: "post"
+      })
+    );
+    expect(plugin.settings.syncCursors.post).toBe("post-next-cursor");
+    expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
+  });
+
+  it("does not treat a bookmark synced id as already synced for user posts", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncedIds: { "same-note": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "same-note", xsecToken: "same-token" }],
+      cursor: "same-post-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "same-note",
+        syncTarget: "post"
+      })
+    );
+    expect(plugin.settings.syncedIds).toEqual({
+      "same-note": true,
+      "post:same-note": true
+    });
+  });
+
+  it("skips user posts that are already synced for the post target", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "post",
+      syncedIds: { "post:same-note": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getUserPosts.mockResolvedValue({
+      notes: [{ noteId: "same-note", xsecToken: "same-token" }],
+      cursor: "same-post-cursor",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getNoteDetail).not.toHaveBeenCalledWith("same-note", "same-token");
+    expect(syncEngineMocks.writer.writeNote).not.toHaveBeenCalledWith(
+      expect.objectContaining({ id: "same-note" })
+    );
+    expect(plugin.settings.syncedIds).toEqual({ "post:same-note": true });
+  });
+
+  it("uses user likes when active sync target is like and writes the target into note detail", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "like",
+      syncCursors: { like: "like-cursor" },
+      syncedIds: {},
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserLikes).toHaveBeenCalledWith("user1", "like-cursor", 30);
+    expect(syncEngineMocks.api.getBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.signer.collectBookmarks).not.toHaveBeenCalled();
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("like-note", "like-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "like-note",
+        syncTarget: "like"
+      })
+    );
+    expect(plugin.settings.syncCursors.like).toBe("like-next-cursor");
+    expect(plugin.settings.syncCursors.bookmark).toBeUndefined();
+  });
+
+  it("restores per-account sync state after the current login resolves to another user", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "like",
+      syncedIds: { "post:old-note": true },
+      syncCursors: { post: "old-cursor" },
+      syncBatchSize: 2
+    });
+    plugin.settings.userId = "old-user";
+    plugin.settings.userName = "旧账号";
+    plugin.settings.perAccountState = {
+      "user1": {
+        syncCursors: { like: "saved-like-cursor" },
+        syncedIds: { "like:like-note": true },
+        allSynced: { like: false },
+        albumWhitelist: { "album-a": true },
+        lastAlbumSnapshot: [{ id: "album-a", title: "旅行" }],
+        bookmarkCateNextCursor: { "album-a": "album-cursor" },
+        cateSyncAllBookmark: { "album-a": false },
+        nextSyncIndex: 20
+      }
+    };
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(plugin.settings.perAccountState["old-user"]).toMatchObject({
+      syncCursors: { post: "old-cursor" },
+      syncedIds: { "post:old-note": true }
+    });
+    expect(syncEngineMocks.api.getUserLikes).toHaveBeenCalledWith(
+      "user1",
+      "saved-like-cursor",
+      30
+    );
+    expect(syncEngineMocks.api.getNoteDetail).not.toHaveBeenCalledWith(
+      "like-note",
+      "like-token"
+    );
+    expect(plugin.settings).toMatchObject({
+      userId: "user1",
+      userName: "用户",
+      syncedIds: { "like:like-note": true },
+      nextSyncIndex: 20
+    });
+  });
+
+  it("uses whitelisted album order, writes album metadata, and marks album scoped sync state", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "album",
+      syncedIds: { "album:album-a:album-note": true },
+      albumWhitelist: { "album-a": true, "album-b": true },
+      bookmarkCateNextCursor: { "album-b": "album-b-cursor" },
+      cateSyncAllBookmark: { "album-a": true },
+      syncBatchSize: 2
+    });
+    const engine = new SyncEngine(plugin);
+    syncEngineMocks.api.getBoardNotes.mockResolvedValue({
+      notes: [{ noteId: "shared-note", xsecToken: "shared-token" }],
+      cursor: "album-b-next",
+      hasMore: false,
+      debug: {
+        topLevelKeys: ["data"],
+        dataKeys: ["notes"],
+        noteCount: 1,
+        hasMore: false,
+        cursorPresent: true,
+        codeType: "undefined",
+        messagePresent: false
+      }
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.api.getUserBoards).toHaveBeenCalledWith("user1");
+    expect(plugin.settings.lastAlbumSnapshot).toEqual([
+      { id: "album-a", title: "旅行", noteCount: 2 },
+      { id: "album-b", title: "食谱", noteCount: 1 }
+    ]);
+    expect(syncEngineMocks.api.getBoardNotes).toHaveBeenCalledWith("album-b", "album-b-cursor", 30);
+    expect(syncEngineMocks.api.getNoteDetail).toHaveBeenCalledWith("shared-note", "shared-token");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "shared-note",
+        syncTarget: "album",
+        albumId: "album-b",
+        albumTitle: "食谱"
+      })
+    );
+    expect(plugin.settings.bookmarkCateNextCursor["album-b"]).toBe("album-b-next");
+    expect(plugin.settings.cateSyncAllBookmark["album-b"]).toBe(true);
+    expect(plugin.settings.syncedIds).toEqual({
+      "album:album-a:album-note": true,
+      "album:album-b:shared-note": true
+    });
+  });
+
+  it("writes AI category when classification is enabled", async () => {
+    const plugin = createPluginHarness({
+      syncedIds: {},
+      syncBatchSize: 1
+    });
+    plugin.settings.enableAiClassify = true;
+    plugin.settings.openaiApiKey = "sk-secret";
+    plugin.settings.openaiBaseUrl = "https://api.example.com/v1";
+    plugin.settings.openaiModel = "test-model";
+    plugin.settings.categories = ["AI 工具", "生活"];
+    syncEngineMocks.classifyNoteCategory.mockResolvedValue("AI 工具");
+    const engine = new SyncEngine(plugin);
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.classifyNoteCategory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "note1" }),
+      {
+        apiKey: "sk-secret",
+        baseUrl: "https://api.example.com/v1",
+        model: "test-model",
+        categories: ["AI 工具", "生活"]
+      }
+    );
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "note1",
+        category: "AI 工具"
+      })
+    );
+  });
+
+  it("rejects album sync without a whitelist and does not write notes", async () => {
+    const plugin = createPluginHarness({
+      activeSyncTarget: "album",
+      syncedIds: {},
+      albumWhitelist: {}
+    });
+    const engine = new SyncEngine(plugin);
+
+    await expect(engine.syncBookmarks()).rejects.toThrow("请先在设置中选择至少一个专辑");
+
+    expect(syncEngineMocks.api.getUserBoards).toHaveBeenCalledWith("user1");
+    expect(syncEngineMocks.api.getBoardNotes).not.toHaveBeenCalled();
+    expect(syncEngineMocks.writer.writeNote).not.toHaveBeenCalled();
+    expect(plugin.settings.syncedIds).toEqual({});
+  });
+
   it("skips visible page error candidates without consuming sync index", async () => {
     const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, nextSyncIndex: 7 });
     const engine = new SyncEngine(plugin);
@@ -608,6 +929,80 @@ describe("sync state helpers", () => {
     );
   });
 
+  it("downloads videos and writes the local path when video downloads are enabled", async () => {
+    const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, downloadVideos: true });
+    const engine = new SyncEngine(plugin);
+    const videoData = new ArrayBuffer(16);
+    __setRequestUrlMock(vi.fn(async (options) => {
+      expect(options).toEqual({
+        url: "https://video.example.com/clip",
+        method: "GET",
+        throw: false,
+        headers: { Range: "bytes=0-" }
+      });
+      return { status: 206, arrayBuffer: videoData };
+    }));
+    syncEngineMocks.api.getNoteDetail.mockResolvedValue({
+      id: "video-note",
+      title: "视频笔记",
+      author: "",
+      url: "https://example.com/video-note",
+      tags: [],
+      content: "视频正文",
+      media: [{ type: "video", url: "http://video.example.com/clip" }],
+      comments: []
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeVideo).toHaveBeenCalledWith("video-note", 1, videoData, "mp4");
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "video-note",
+        media: [
+          {
+            type: "video",
+            url: "http://video.example.com/clip",
+            localPath: "video-path"
+          }
+        ]
+      })
+    );
+  });
+
+  it("records video download errors and still writes the note", async () => {
+    const plugin = createPluginHarness({ syncedIds: {}, syncBatchSize: 1, downloadVideos: true });
+    const engine = new SyncEngine(plugin);
+    __setRequestUrlMock(vi.fn(async () => ({ status: 403, arrayBuffer: new ArrayBuffer(0) })));
+    syncEngineMocks.api.getNoteDetail.mockResolvedValue({
+      id: "video-note",
+      title: "视频笔记",
+      author: "",
+      url: "https://example.com/video-note",
+      tags: [],
+      content: "视频正文",
+      media: [{ type: "video", url: "https://video.example.com/denied", ext: "mov" }],
+      comments: []
+    });
+
+    await engine.syncBookmarks();
+
+    expect(syncEngineMocks.writer.writeVideo).not.toHaveBeenCalled();
+    expect(syncEngineMocks.writer.writeNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "video-note",
+        media: [
+          {
+            type: "video",
+            url: "https://video.example.com/denied",
+            ext: "mov",
+            downloadError: expect.stringContaining("HTTP 403")
+          }
+        ]
+      })
+    );
+  });
+
   it("redacts unknown raw sync errors before storing status", async () => {
     const plugin = createPluginHarness();
     const engine = new SyncEngine(plugin);
@@ -642,19 +1037,39 @@ describe("sync state helpers", () => {
 function createPluginHarness(overrides: Partial<{
   cookies: string;
   syncedIds: Record<string, true>;
+  syncCursors: Record<string, string>;
+  activeSyncTarget: "bookmark" | "post" | "like" | "album";
   syncBatchSize: number;
   nextSyncIndex: number;
+  downloadVideos: boolean;
+  albumWhitelist: Record<string, true>;
+  bookmarkCateNextCursor: Record<string, string>;
+  cateSyncAllBookmark: Record<string, boolean>;
 }> = {}) {
   const settings = {
     a1Cookie: "session",
     cookies: overrides.cookies ?? "",
     userId: "",
     userName: "",
-    syncCursors: {},
+    syncCursors: overrides.syncCursors ?? {},
     syncedIds: overrides.syncedIds ?? ({ note1: true } as Record<string, true>),
+    allSynced: {},
+    albumWhitelist: overrides.albumWhitelist ?? {},
+    bookmarkCateNextCursor: overrides.bookmarkCateNextCursor ?? {},
+    cateSyncAllBookmark: overrides.cateSyncAllBookmark ?? {},
+    lastAlbumSnapshot: [],
+    perAccountState: {},
     nextSyncIndex: overrides.nextSyncIndex ?? 1,
+    activeSyncTarget: overrides.activeSyncTarget ?? "bookmark",
+    syncTargets: ["bookmark" as const],
     syncBatchSize: overrides.syncBatchSize ?? 2,
     downloadImages: false,
+    downloadVideos: overrides.downloadVideos ?? false,
+    enableAiClassify: false,
+    openaiApiKey: "",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    openaiModel: "gpt-4o-mini",
+    categories: [],
     rootFolder: "RedNote",
     lastSyncAt: 0,
     lastSyncError: "",

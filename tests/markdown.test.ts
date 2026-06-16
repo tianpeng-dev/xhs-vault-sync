@@ -35,6 +35,40 @@ describe("renderNoteMarkdown", () => {
     expect(markdown).toContain('syncedAt: "2026-06-14T00:00:00.000Z"');
   });
 
+  it("renders sync target and album metadata in frontmatter", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "专辑笔记",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [],
+      syncTarget: "album",
+      albumId: "album-a",
+      albumTitle: "旅行"
+    });
+
+    expect(markdown).toContain('syncTarget: "album"');
+    expect(markdown).toContain('albumId: "album-a"');
+    expect(markdown).toContain('albumTitle: "旅行"');
+  });
+
+  it("renders AI category in frontmatter", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "分类笔记",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [],
+      category: "AI 工具"
+    });
+
+    expect(markdown).toContain('category: "AI 工具"');
+  });
+
   it("escapes brackets in local image wikilinks", () => {
     const markdown = renderNoteMarkdown({
       id: "note1",
@@ -63,6 +97,24 @@ describe("renderNoteMarkdown", () => {
 
     expect(markdown).toContain('<video controls src="RedNote/Media/note1/a&quot;b&amp;c&lt;d&gt;.mp4"></video>');
     expect(markdown).not.toContain('src="RedNote/Media/note1/a"b');
+  });
+
+  it("renders local videos as HTML video tags and remote videos as links", () => {
+    const markdown = renderNoteMarkdown({
+      id: "note1",
+      title: "Test Note",
+      author: "Alice",
+      url: "https://www.xiaohongshu.com/explore/note1",
+      tags: [],
+      content: "hello",
+      media: [
+        { type: "video", url: "https://example.com/a.mp4", localPath: "RedNote/Media/note1/video-1.mp4" },
+        { type: "video", url: "https://example.com/b.mp4" }
+      ]
+    });
+
+    expect(markdown).toContain('<video controls src="RedNote/Media/note1/video-1.mp4"></video>');
+    expect(markdown).toContain("[video link](https://example.com/b.mp4)");
   });
 
   it("renders unavailable text for unsafe remote media URLs", () => {

@@ -205,6 +205,19 @@ describe("插件状态栏契约", () => {
       cookies: "",
       syncCursors: { bookmark: "cursor-1" },
       syncedIds: { note1: true },
+      syncTargets: ["bookmark"],
+      downloadVideos: false,
+      enableAiClassify: false,
+      openaiApiKey: "",
+      openaiBaseUrl: "https://api.openai.com/v1",
+      openaiModel: "gpt-4o-mini",
+      categories: [],
+      allSynced: {},
+      albumWhitelist: {},
+      lastAlbumSnapshot: [],
+      bookmarkCateNextCursor: {},
+      cateSyncAllBookmark: {},
+      perAccountState: {},
       hasSeenOnboarding: false,
       syncLog: [
         {
@@ -224,6 +237,19 @@ describe("插件状态栏契约", () => {
       skippedCount: 0,
       lastError: "xsec_token=[redacted]"
     });
+  });
+
+  it("loadSettings 保留合法专辑同步目标并补齐专辑快照默认值", async () => {
+    const plugin = createPlugin({
+      activeSyncTarget: "album" as any,
+      syncTargets: ["bookmark", "album"] as any
+    });
+
+    await plugin.loadSettings();
+
+    expect(plugin.settings.activeSyncTarget).toBe("album");
+    expect(plugin.settings.syncTargets).toEqual(["bookmark", "album"]);
+    expect(plugin.settings.lastAlbumSnapshot).toEqual([]);
   });
 
   it("syncNow 重复触发时只运行一个同步任务", async () => {
